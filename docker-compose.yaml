@@ -1,0 +1,57 @@
+name: Services for Graph RAG
+
+services:
+  redis:
+    image: redis:alpine
+    container_name: redis_app
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - backend_network
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: backend_app:v1.0
+    container_name: backend_app
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./backend/.env
+    networks:
+      - backend_network
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  celery_worker:
+    image: backend_app:v1.0
+    restart: unless-stopped
+    container_name: celery_worker_app
+    # Overrides the default CMD in your Dockerfile
+    command: celery -A celery_worker.celery_app worker --loglevel=info --pool=threads
+    networks:
+      - backend_network
+    env_file:
+      - ./backend/.env
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+
+
+
+volumes:
+  redis_data:
+networks:
+  backend_network:

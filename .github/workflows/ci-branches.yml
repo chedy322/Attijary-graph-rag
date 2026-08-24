@@ -1,0 +1,21 @@
+# Run githGuarding check and dependency scanning on every pull request on every branch
+on:
+    push:
+        branches-ignore:
+            - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+    #  Run dependabot bot,secret scanning
+    dependency-scanning:
+        uses: ./.github/workflows/reusable-dependency-scanning.yml
+    secret-scanning:
+        uses: ./.github/workflows/reusable-secret-scanning.yml
+        secrets:
+            GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

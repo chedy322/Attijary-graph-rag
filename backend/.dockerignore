@@ -1,0 +1,31 @@
+# Ignore version control metadata
+.git
+.gitignore
+
+# Ignore local dependencies and package manager lock files if installed in container
+node_modules
+venv
+.venv
+__pycache__
+
+# Ignore environment variables and secrets (CRITICAL for security)
+.env
+.env.*
+*.pem
+*.key
+
+# Ignore local build artifacts and distribution folders
+dist
+build
+out
+.next
+
+# Ignore testing and IDE configurations
+.vscode
+.idea
+.pytest_cache
+coverage
+
+# Ignore logs and temporary files
+*.log
+.DS_Store

@@ -1,0 +1,169 @@
+<div class="verification-page">
+  <!-- Top Navigation & Action Header -->
+  <header class="top-nav">
+    <div class="breadcrumbs">
+      <a routerLink="/dashboard">Home</a>
+      <span class="sep">&gt;</span>
+      <a routerLink="/documents">Documents</a>
+      <span class="sep">&gt;</span>
+      <span>Circular N° 2026-05</span>
+      <span class="sep">&gt;</span>
+      <span class="current">Verification</span>
+    </div>
+
+    <div class="header-actions">
+      <a [routerLink]="['/graph']" class="btn btn-secondary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        View Graph Lineage
+      </a>
+      <button class="btn btn-secondary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download PDF
+      </button>
+      <button class="icon-btn">&hellip;</button>
+    </div>
+  </header>
+
+  <!-- Split Screen Content Layout -->
+  <div class="split-container">
+    <!-- Left Pane: AI Assistant Verification Panel -->
+    <div class="left-pane">
+      <div class="pane-header">
+        <div class="assistant-status">
+          <span class="dot-live"></span>
+          <span>AI Assistant</span>
+          <span class="badge-connected">Connected</span>
+        </div>
+      </div>
+
+      <div class="pane-content">
+        <!-- User Prompt -->
+        <div class="msg-bubble user-msg">
+          <p>{{ userQuestion }}</p>
+          <div class="msg-time">10:24 AM <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
+        </div>
+
+        <!-- AI Verification Answer Card -->
+        <div class="ai-verification-card">
+          <div class="card-head">
+            <div class="bank-avatar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 10h18M5 10v11M9 10v11M13 10v11M17 10v11M2 10l10-7 10 7"/></svg></div>
+            <span class="confidence-badge">Confidence Score: {{ confidenceScore }}%</span>
+          </div>
+
+          <p class="answer-lead">{{ aiAnswer }}</p>
+
+          <!-- Highlighted Source Quote Box -->
+          <div class="quote-callout">
+            <p>"{{ highlightedText }}"</p>
+            <span class="quote-source">{{ sourceCitation }}</span>
+          </div>
+
+          <!-- Cited Document Card -->
+          <div class="source-card">
+            <div class="pdf-tag">PDF</div>
+            <div class="source-meta">
+              <span class="source-title">Circular_2026_05_Reserve_Requirements.pdf</span>
+              <span class="source-page">Page {{ currentPage }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pane-footer">
+        <div class="input-box">
+          <input type="text" placeholder="Ask a follow-up question..." />
+          <button class="send-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Pane: PDF Document Viewer -->
+    <div class="right-pane">
+      <!-- Document Info Header -->
+      <div class="doc-header">
+        <div class="doc-title-info">
+          <h2>{{ document?.title || 'Circular N° 2026-05 - Reserve Requirements for Commercial Banks' }}</h2>
+          <div class="doc-sub">
+            <span>Source: Central Bank</span>
+            <span class="dot">•</span>
+            <span>Uploaded on May 10, 2026</span>
+            <span class="verified-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Verified</span>
+          </div>
+        </div>
+        <div class="doc-id">Document ID: {{ document?.number || 'CB-CIRC-2026-05' }}</div>
+      </div>
+
+      <!-- Viewer Toolbar -->
+      <div class="viewer-toolbar">
+        <button class="tool-btn" (click)="toggleThumbnails()" title="Thumbnails"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></button>
+
+        <div class="page-nav">
+          <button (click)="changePage(currentPage - 1)" [disabled]="currentPage <= 1">&lt;</button>
+          <span>{{ currentPage }} / {{ totalPages }}</span>
+          <button (click)="changePage(currentPage + 1)" [disabled]="currentPage >= totalPages">&gt;</button>
+        </div>
+
+        <div class="zoom-controls">
+          <button (click)="zoomOut()">-</button>
+          <span>{{ zoomLevel }}%</span>
+          <button (click)="zoomIn()">+</button>
+        </div>
+      </div>
+
+      <!-- Viewer Main Content (Thumbnails + Canvas Page View) -->
+      <div class="viewer-workspace">
+        @if (showThumbnails) {
+          <div class="thumbnail-strip">
+            @for (p of [1, 2, 3, 4, 5]; track p) {
+              <div
+                class="thumb-item"
+                [class.active]="p === currentPage"
+                (click)="changePage(p)"
+              >
+                <div class="mini-page">
+                  <div class="line lg"></div>
+                  <div class="line md"></div>
+                  <div class="line sm"></div>
+                </div>
+                <span class="thumb-num">{{ p }}</span>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- PDF Document Rendering Page -->
+        <div class="document-viewport">
+          <div class="pdf-page" [style.transform]="'scale(' + (zoomLevel / 100) + ')'">
+            <div class="pdf-header">
+              <span class="pdf-title">Circular N° 2026-05</span>
+              <span class="pdf-sub">Reserve Requirements for Commercial Banks</span>
+            </div>
+
+            <div class="pdf-section">
+              <h3>3. RESERVE REQUIREMENTS</h3>
+
+              <h4>3.1 General Provisions</h4>
+              <p>In accordance with Article 42 of the Banking Act, commercial banks shall maintain reserve balances in eligible accounts with the Central Bank as specified in this Circular.</p>
+
+              <!-- Exact Match Yellow Highlight snippet from RAG Engine -->
+              <div class="highlight-snippet">
+                <p><strong>Banks must maintain reserve balances in eligible accounts with the Central Bank as follows: (a) Demand deposits: 10% of the total amount; (b) Time and savings deposits: 5% of the total amount. These requirements are applicable to all banks licensed by the Central Bank.</strong></p>
+              </div>
+
+              <h4>3.2 Calculation of Reserve Requirements</h4>
+              <p>Reserve requirements shall be calculated on a daily average basis using the end-of-day balances of the applicable deposit categories.</p>
+
+              <h4>3.3 Eligible Accounts</h4>
+              <p>Reserve balances must be maintained in the settlement accounts held by the bank with the Central Bank and must be freely available.</p>
+            </div>
+
+            <div class="pdf-footer">
+              <span>Central Bank</span>
+              <span>{{ currentPage }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

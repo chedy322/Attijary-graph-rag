@@ -1,0 +1,19 @@
+# Run on every pull request on every branch
+on:
+  pull_request:
+      branches:
+        - main
+      paths:
+        - 'frontend/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+# Run ,depandabot bot,secret scanning ,unit test ,Intergration test,security test
+jobs:
+
+  # Run Security test
+  codeql-analysis:
+    uses: ./.github/workflows/reusable-codeql-analysis.yml
+    with:
+      languages: 'javascript-typescript'

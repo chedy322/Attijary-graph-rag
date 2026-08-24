@@ -1,0 +1,55 @@
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.0
+    hooks:
+      - id: gitleaks
+        name: Gitleaks
+        description: Detect secrets in your code
+        entry: gitleaks detect --verbose --redact
+        language: golang
+        stages: [commit]
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        name: Detect secrets
+        description: Detects *approximate* secrets in your code
+        entry: detect-secrets scan
+        language: python
+        types: [python]
+
+  # --- BACKEND (Ruff) ---
+  # - repo: https://github.com/astral-sh/ruff-pre-commit
+  #   rev: v0.4.4
+  #   hooks:
+  #     - id: ruff
+  #       files: ^backend/
+  #     - id: ruff-format
+  #       files: ^backend/
+
+  # --- INFRASTRUCTURE (Terraform) ---
+  # - repo: local
+  #   hooks:
+  #     - id: terraform-fmt
+  #       name: Terraform Format
+  #       entry: terraform fmt -recursive
+  #       language: system
+  #       files: ^infrastructure/
+  #       types: [tf]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-merge-conflict
+
+  # --- FRONTEND (Prettier) ---
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0
+    hooks:
+      - id: prettier
+        files: ^frontend/
+        types_or: [javascript, jsx, ts, tsx, css, json]

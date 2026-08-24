@@ -1,0 +1,157 @@
+<div class="auth-page">
+  <!-- Left Side: Dark Hero Graphic Section -->
+  <div class="hero-section">
+    <div class="hero-header">
+      <div class="logo-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 10h18M5 10v11M9 10v11M13 10v11M17 10v11M2 10l10-7 10 7"/></svg>
+      </div>
+      <div class="brand-text">
+        <span class="brand-title">CENTRAL BANK</span>
+        <span class="brand-subtitle">INTELLIGENCE</span>
+      </div>
+    </div>
+
+    <div class="hero-body">
+      <h1>RegTech AI Hub</h1>
+      <p class="hero-sub">AI-Powered Regulatory Intelligence for a Smarter Financial Tomorrow</p>
+      <div class="accent-line"></div>
+
+      <!-- Glowing Network Visualization Graphic -->
+      <div class="network-graphic">
+        <div class="graphic-node center-node">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </div>
+        <div class="graphic-node n-shield">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="graphic-node n-bank">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 10h18M5 10v11M9 10v11M13 10v11M17 10v11M2 10l10-7 10 7"/></svg>
+        </div>
+        <div class="graphic-node n-scale">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1zM2 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1zM7 21h10M12 3v18"/></svg>
+        </div>
+        <div class="graphic-node n-users">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-footer">
+      <div class="footer-badge">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+        <div class="badge-text">
+          <span class="strong">Trusted. Secure. Compliant.</span>
+          <span class="sub">Built for Central Banks. By Experts.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Side: Clerk Authentication Card Form -->
+  <div class="form-section">
+    <div class="auth-card">
+      <!-- Segmented Tab Header -->
+      <div class="tab-switcher">
+        <button [class.active]="activeTab === 'signin'" (click)="setTab('signin')">Sign In</button>
+        <button [class.active]="activeTab === 'signup'" (click)="setTab('signup')">Create Account</button>
+      </div>
+
+      <!-- Form Title -->
+      <div class="card-head">
+        <h2>{{ activeTab === 'signin' ? 'Welcome back' : 'Create your account' }}</h2>
+        <p>Sign in to access Central Bank Intelligence</p>
+      </div>
+
+      <!-- Auth Form -->
+      <form (ngSubmit)="onSubmit()" class="auth-form">
+        @if (activeTab === 'signup') {
+          <div class="form-row">
+            <div class="form-group">
+              <label>First Name</label>
+              <input type="text" [(ngModel)]="firstname" name="firstname" placeholder="Chedi" required />
+            </div>
+            <div class="form-group">
+              <label>Last Name</label>
+              <input type="text" [(ngModel)]="lastname" name="lastname" placeholder="Bououn" required />
+            </div>
+          </div>
+        }
+
+        <!-- Email Field -->
+        <div class="form-group">
+          <label>Work Email</label>
+          <div class="input-wrapper">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <input type="email" [(ngModel)]="email" name="email" placeholder="you@centralbank.int" required />
+          </div>
+        </div>
+
+        <!-- Password Field -->
+        <div class="form-group">
+          <label>Password</label>
+          <div class="input-wrapper">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input [type]="showPassword ? 'text' : 'password'" [(ngModel)]="password" name="password" placeholder="Enter your password" required />
+            <button type="button" class="eye-toggle" (click)="toggleShowPassword()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                @if (showPassword) {
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>
+                } @else {
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                }
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Demo Role Selector (Allowed for easy testing) -->
+        <div class="role-selector">
+          <span class="role-title">Select Initial Account Role (Demo):</span>
+          <div class="role-options">
+            <label class="role-radio">
+              <input type="radio" [(ngModel)]="rolePreference" name="rolePreference" value="ADMIN" />
+              <span>Administrator</span>
+            </label>
+            <label class="role-radio">
+              <input type="radio" [(ngModel)]="rolePreference" name="rolePreference" value="USER" />
+              <span>Standard User</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Forgot Password Link -->
+        @if (activeTab === 'signin') {
+          <div class="forgot-link-row">
+            <a href="#" class="forgot-link">Forgot password?</a>
+          </div>
+        }
+
+        <!-- Submit Button -->
+        <button type="submit" class="btn btn-primary submit-btn" [disabled]="isLoading">
+          @if (isLoading) {
+            <span class="spinner"></span> Syncing with Clerk...
+          } @else {
+            {{ activeTab === 'signin' ? 'Sign In' : 'Create Account' }}
+          }
+        </button>
+      </form>
+
+      <!-- Divider -->
+      <div class="divider">
+        <span>or continue with</span>
+      </div>
+
+      <!-- SSO Button -->
+      <button class="btn btn-sso" (click)="signInWithSSO()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Sign in with Single Sign-On (SSO)
+      </button>
+    </div>
+
+    <!-- Below Card Security Note -->
+    <div class="card-footer-note">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <span>Enterprise Secure • SOC 2 Type II • Clerk Auth</span>
+    </div>
+  </div>
+</div>

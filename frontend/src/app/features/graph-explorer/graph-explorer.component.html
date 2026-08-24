@@ -1,0 +1,268 @@
+<div class="graph-explorer-page">
+  <!-- Top Hybrid Search & Filter Toolbar -->
+  <div class="top-toolbar">
+    <div class="search-input">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" placeholder="Hybrid Search: Search documents, regulations, keywords..." />
+      <span class="key-shortcut">&#8984; K</span>
+    </div>
+
+    <div class="filters-row">
+      <select>
+        <option>Document Type: All Types</option>
+        <option>Circulars</option>
+        <option>Laws</option>
+      </select>
+
+      <select>
+        <option>Category: All Categories</option>
+        <option>Monetary Policy</option>
+        <option>Supervision</option>
+      </select>
+
+      <select>
+        <option>Date Range: Any Time</option>
+        <option>2026</option>
+        <option>2025</option>
+      </select>
+
+      <button class="filter-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        More Filters
+      </button>
+    </div>
+  </div>
+
+  <!-- Workspace Container (Graph Canvas + Detail Drawer) -->
+  <div class="workspace-container">
+    <!-- Main Interactive Graph Area -->
+    <div class="graph-canvas-area">
+      <!-- Title & Layout Controls Header -->
+      <div class="canvas-header">
+        <div class="header-info">
+          <h2>Regulatory Knowledge Graph</h2>
+          <p>Explore relationships between regulatory documents and circulars</p>
+        </div>
+
+        <div class="canvas-controls">
+          <select class="control-select">
+            <option>Layout: Force Directed</option>
+            <option>Layout: Radial</option>
+          </select>
+
+          <select class="control-select">
+            <option>View: All Relationships</option>
+            <option>Modifies Only</option>
+          </select>
+
+          <button class="icon-control-btn" title="Fullscreen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+        </div>
+      </div>
+
+      <!-- Graph Diagram Canvas -->
+      <div class="interactive-graph-viewport">
+        <!-- Floating Canvas Tools -->
+        <div class="floating-tools">
+          <button title="Reset"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
+          <button title="Zoom In">+</button>
+          <button title="Zoom Out">-</button>
+        </div>
+
+        <!-- Central Node Diagram Layout -->
+        <div class="graph-nodes-network">
+          <!-- Central Root Node -->
+          <div class="graph-node root-node" (click)="selectNode('cb-circ-2026-05', 'Circular N° 2026-05')">
+            <div class="node-glow"></div>
+            <div class="node-circle blue-gradient">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+            </div>
+            <span class="node-title">Circular N° 2026-05</span>
+            <span class="node-subtitle">Reserve Requirements</span>
+            <span class="node-status-pill current">Current</span>
+          </div>
+
+          <!-- Surrounding Connected Nodes -->
+          <div class="graph-node peripheral-node node-top" (click)="selectNode('cb-circ-2024-08', 'Circular N° 2024-08')">
+            <div class="node-circle blue-circle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div>
+            <span class="node-title">Circular N° 2024-08</span>
+            <span class="node-subtitle">Liquidity Management</span>
+            <span class="edge-link-label">REFERENCES</span>
+          </div>
+
+          <div class="graph-node peripheral-node node-top-right" (click)="selectNode('cb-circ-2022-12', 'Circular N° 2022-12')">
+            <div class="node-circle purple-circle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div>
+            <span class="node-title">Circular N° 2022-12</span>
+            <span class="node-subtitle">Reserve Requirements</span>
+            <span class="node-status-pill superseded">Superseded</span>
+            <span class="edge-link-label">MODIFIES</span>
+          </div>
+
+          <div class="graph-node peripheral-node node-right" (click)="selectNode('reg-2019', 'Regulation Act 2019')">
+            <div class="node-circle green-circle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+            <span class="node-title">Regulation Act 2019</span>
+            <span class="node-subtitle">Banking Act</span>
+            <span class="edge-link-label">DERIVED FROM</span>
+          </div>
+
+          <div class="graph-node peripheral-node node-bottom-right" (click)="selectNode('cb-circ-2021-07', 'Circular N° 2021-07')">
+            <div class="node-circle blue-circle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div>
+            <span class="node-title">Circular N° 2021-07</span>
+            <span class="node-subtitle">Risk Management</span>
+            <span class="edge-link-label">REFERENCES</span>
+          </div>
+
+          <div class="graph-node peripheral-node node-bottom" (click)="selectNode('cb-circ-2020-11', 'Circular N° 2020-11')">
+            <div class="node-circle blue-circle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div>
+            <span class="node-title">Circular N° 2020-11</span>
+            <span class="node-subtitle">Foreign Exchange</span>
+            <span class="edge-link-label">RELATED TO</span>
+          </div>
+
+          <div class="graph-node peripheral-node node-bottom-left" (click)="selectNode('cb-circ-2023-03', 'Circular N° 2023-03')">
+            <div class="node-circle purple-circle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div>
+            <span class="node-title">Circular N° 2023-03</span>
+            <span class="node-subtitle">AML/CFT Guidelines</span>
+            <span class="edge-link-label">REFERENCES</span>
+          </div>
+
+          <div class="graph-node peripheral-node node-left" (click)="selectNode('cb-circ-2025-01', 'Circular N° 2025-01')">
+            <div class="node-circle green-circle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div>
+            <span class="node-title">Circular N° 2025-01</span>
+            <span class="node-subtitle">Capital Adequacy</span>
+            <span class="edge-link-label">REFERENCES</span>
+          </div>
+        </div>
+
+        <!-- Legend Card -->
+        <div class="legend-card">
+          <div class="legend-group">
+            <span class="legend-title">Relationship Types</span>
+            <div class="legend-item"><span class="line purple"></span> MODIFIES</div>
+            <div class="legend-item"><span class="line blue"></span> REFERENCES</div>
+            <div class="legend-item"><span class="line green"></span> DERIVED FROM</div>
+            <div class="legend-item"><span class="line gray-dashed"></span> RELATED TO</div>
+          </div>
+          <div class="legend-group">
+            <span class="legend-title">Document Status</span>
+            <div class="legend-item"><span class="dot blue"></span> Current</div>
+            <div class="legend-item"><span class="dot purple"></span> Superseded</div>
+            <div class="legend-item"><span class="dot gray"></span> Archived</div>
+          </div>
+        </div>
+
+        <!-- Mini Map -->
+        <div class="mini-map">
+          <div class="mini-canvas">
+            <div class="mini-node center"></div>
+            <div class="mini-node n1"></div>
+            <div class="mini-node n2"></div>
+            <div class="mini-node n3"></div>
+            <div class="view-rect"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Drawer: Document Details & Relationships -->
+    <div class="detail-drawer">
+      <div class="drawer-header">
+        <div class="drawer-title-row">
+          <div class="icon-circle"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div>
+          <div class="header-titles">
+            <h3>{{ selectedNode.title }}</h3>
+            <span class="sub">{{ selectedNode.subtitle }}</span>
+            <span class="badge-current">Current</span>
+          </div>
+          <button class="close-btn">&times;</button>
+        </div>
+
+        <!-- Tabs -->
+        <div class="drawer-tabs">
+          <button [class.active]="selectedTab === 'details'" (click)="selectedTab = 'details'">Details</button>
+          <button [class.active]="selectedTab === 'relationships'" (click)="selectedTab = 'relationships'">Relationships <span class="num-badge">8</span></button>
+        </div>
+      </div>
+
+      <div class="drawer-body">
+        @if (selectedTab === 'details') {
+          <div class="meta-list">
+            <div class="meta-item">
+              <span class="meta-label">Title</span>
+              <span class="meta-value font-semibold">{{ selectedNode.fullTitle }}</span>
+            </div>
+
+            <div class="meta-item">
+              <span class="meta-label">Document ID</span>
+              <span class="meta-value font-mono">{{ selectedNode.documentId }}</span>
+            </div>
+
+            <div class="meta-item">
+              <span class="meta-label">Date Issued</span>
+              <span class="meta-value">{{ selectedNode.dateIssued }}</span>
+            </div>
+
+            <div class="meta-item">
+              <span class="meta-label">Category</span>
+              <span class="meta-value">{{ selectedNode.category }}</span>
+            </div>
+
+            <div class="meta-item">
+              <span class="meta-label">Sub Category</span>
+              <span class="meta-value">{{ selectedNode.subCategory }}</span>
+            </div>
+
+            <div class="meta-item">
+              <span class="meta-label">Origin</span>
+              <span class="meta-value">{{ selectedNode.origin }}</span>
+            </div>
+
+            <div class="meta-item">
+              <span class="meta-label">Status</span>
+              <span class="meta-value"><span class="dot-active"></span> {{ selectedNode.status }}</span>
+            </div>
+
+            <div class="meta-item">
+              <span class="meta-label">Version</span>
+              <span class="meta-value">{{ selectedNode.version }}</span>
+            </div>
+
+            <div class="meta-item">
+              <span class="meta-label">Language</span>
+              <span class="meta-value">{{ selectedNode.language }}</span>
+            </div>
+
+            <div class="meta-item full">
+              <span class="meta-label">Summary</span>
+              <p class="summary-text">{{ selectedNode.summary }}</p>
+            </div>
+          </div>
+        } @else {
+          <div class="rel-list">
+            <div class="rel-card">
+              <span class="rel-type modifies">MODIFIES</span>
+              <span class="target-title">Circular N° 2022-12</span>
+              <span class="target-sub">Reserve Requirements (Superseded)</span>
+            </div>
+            <div class="rel-card">
+              <span class="rel-type references">REFERENCES</span>
+              <span class="target-title">Circular N° 2024-08</span>
+              <span class="target-sub">Liquidity Management</span>
+            </div>
+            <div class="rel-card">
+              <span class="rel-type derived">DERIVED FROM</span>
+              <span class="target-title">Regulation Act 2019</span>
+              <span class="target-sub">Banking Act</span>
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="drawer-footer">
+        <a [routerLink]="['/verification', 'cb-circ-2026-05']" class="view-doc-btn">
+          <span>View Document</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>

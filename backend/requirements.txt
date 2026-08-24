@@ -1,0 +1,45 @@
+# Web Framework & Auth
+flask
+flask-cors
+flask-sqlalchemy
+flask-migrate
+clerk-backend-api
+
+# Databases & Vector Stores
+sqlalchemy
+psycopg2-binary
+pgvector
+neo4j
+weaviate-client
+
+# Background Tasks & Caching
+celery
+redis
+langchain-text-splitters
+email-validator
+# AI & RAG
+langchain
+langgraph
+langchain-google-genai
+openai
+
+# Cloud Storage
+azure-storage-blob
+azure-identity
+
+# Security & Utilities
+python-dotenv
+pyjwt
+passlib[bcrypt]
+httpx
+requests
+pydantic
+werkzeug
+
+# Document Processing (Lightweight PDF Parsing)
+unstructured
+pdfminer.six
+pypdf
+pdf2image
+
+networkx

@@ -1,0 +1,77 @@
+on:
+  workflow_call:
+    inputs:
+      image_name:
+        required: true
+        type: string
+      image_tag:
+        required: false
+        type: string
+        default: 'latest'
+        description: 'Tag for the Docker image'
+      dockerfile_path:
+        required: false
+        default: 'Dockerfile'
+        type: string
+        description: Path to the Dockerfile relative to the repository root
+      build_args:
+        required: false
+        default: ''
+        type: string
+        description: Build arguments for the Docker image
+      push_image:
+        required: false
+        type: boolean
+        default: false
+        description: Whether to push the built image to the container registry
+    secrets:
+      DOCKER_USERNAME:
+        required: true
+      DOCKER_PASSWORD:
+        required: true
+
+jobs:
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Docker image locally
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ inputs.dockerfile_path }}
+          push: false
+          load: true
+          build-args: ${{ inputs.build_args }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: |
+            docker.io/${{ secrets.DOCKER_USERNAME }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
+            docker.io/${{ secrets.DOCKER_USERNAME }}/${{ inputs.image_name }}:${{ github.sha }}
+
+      - name: Run Trivy test for image before pushing to registry
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: docker.io/${{ secrets.DOCKER_USERNAME }}/${{ inputs.image_name }}:${{ github.sha }}
+          format: 'sarif'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Push image to registry
+        if: ${{ inputs.push_image }}
+        run: |
+          docker push docker.io/${{ secrets.DOCKER_USERNAME }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
+          docker push docker.io/${{ secrets.DOCKER_USERNAME }}/${{ inputs.image_name }}:${{ github.sha }}

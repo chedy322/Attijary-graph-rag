@@ -1,0 +1,13 @@
+# on:
+#     schedule:
+#         - cron: '0 0 * * *' # Runs every day at midnight
+
+# CHECK THIS PART BECAUSE IT ALSO INCLUDES THE FORNTEND AND BACEKND
+
+# jobs:
+#     # Run CODEQL SAST ANALYSIS , INFRASTRCUTURE AS CODE ANALYSIS
+#     # IN THE FURUTRE IMPLIMENT DAST ANALYSIS(ZAP OWASP)
+#     codeql-analysis:
+#         uses: ./.github/workflows/reusable-codeql-analysis.yml
+#         with:
+#             languages: 'python'

@@ -1,0 +1,51 @@
+# Flask specific
+instance/
+.webassets-cache
+
+# Environments
+.env
+.flaskenv
+venv/
+env/
+ENV/
+.venv/
+.env
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+node_modules/
+.pnpm-store/
+__pycache__/
+*.pyc
+dist/
+build/
+# Infrastructure
+.terraform/
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.exe
+*.tfstate.backup
+*.db
+*.sqlite
+*.vector
+*.bin
+*.pkl
+*.pdf
+ARCHITECTURE.md
+TODO

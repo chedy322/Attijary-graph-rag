@@ -1,0 +1,248 @@
+<div class="dashboard-page">
+  <!-- Top Header Bar -->
+  <header class="page-header">
+    <div class="header-left">
+      <h1>Ingestion Pipeline</h1>
+      <p>Monitor and manage document ingestion from multiple sources.</p>
+    </div>
+    <div class="header-actions">
+      @if (scraperMessage) {
+        <span class="sync-banner">{{ scraperMessage }}</span>
+      }
+      <button class="btn btn-secondary" (click)="triggerSyncScraper()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6"/><path d="M2 11.5a10 10 0 0 1 18.8-4.3L21.5 8M22 12.5a10 10 0 0 1-18.8 4.2L2.5 16"/></svg>
+        Sync Scraper
+      </button>
+      <button class="btn btn-primary" (click)="openUploadModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Upload Document
+      </button>
+    </div>
+  </header>
+
+  <!-- Metric Cards Grid -->
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <div class="metric-icon blue-bg">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      </div>
+      <div class="metric-body">
+        <span class="metric-label">Total Indexed Documents</span>
+        <div class="metric-value-row">
+          <span class="metric-value">{{ totalIndexed | number }}</span>
+          <span class="metric-badge green">+8.4%</span>
+        </div>
+        <span class="metric-sub">+972 this week</span>
+      </div>
+      <div class="sparkline blue-sparkline"></div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-icon green-bg">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      </div>
+      <div class="metric-body">
+        <span class="metric-label">Active Web Scraper Syncs</span>
+        <div class="metric-value-row">
+          <span class="metric-value">{{ activeScraperSyncs }}</span>
+        </div>
+        <span class="metric-sub">2 running now</span>
+      </div>
+      <div class="sparkline green-sparkline"></div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-icon red-bg">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </div>
+      <div class="metric-body">
+        <span class="metric-label">Failed Pipelines</span>
+        <div class="metric-value-row">
+          <span class="metric-value">{{ failedPipelines }}</span>
+        </div>
+        <span class="metric-sub text-danger">Requires attention</span>
+      </div>
+      <div class="sparkline red-sparkline"></div>
+    </div>
+  </div>
+
+  <!-- Documents Table Card -->
+  <div class="content-card">
+    <!-- Filter Toolbar -->
+    <div class="toolbar">
+      <div class="search-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input
+          type="text"
+          placeholder="Search documents, circulars, or sources..."
+          [(ngModel)]="searchTerm"
+          (input)="applyFilters()"
+        />
+      </div>
+
+      <div class="filter-controls">
+        <select [(ngModel)]="selectedOrigin" (change)="applyFilters()">
+          <option value="ALL">All Origins</option>
+          <option value="MANUAL">Manual</option>
+          <option value="SCRAPED">Scraped</option>
+        </select>
+
+        <select [(ngModel)]="selectedStatus" (change)="applyFilters()">
+          <option value="ALL">All Statuses</option>
+          <option value="COMPLETED">Completed</option>
+          <option value="PROCESSING">Processing</option>
+          <option value="FAILED">Failed</option>
+          <option value="PENDING_UPLOAD">Pending</option>
+        </select>
+
+        <div class="date-picker-mock">
+          <span>May 8 – May 15, 2026</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Document Title</th>
+            <th>Circular Number</th>
+            <th>Upload Date</th>
+            <th>Origin</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (doc of filteredDocuments; track doc.document_id) {
+            <tr>
+              <!-- Title & Category -->
+              <td class="col-title">
+                <div class="doc-cell">
+                  <div class="file-icon" [class.scraped]="doc.origin === 'SCRAPED'">
+                    @if (doc.origin === 'SCRAPED') {
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+                    } @else {
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+                    }
+                  </div>
+                  <div class="doc-meta">
+                    <span class="doc-title">{{ doc.title }}</span>
+                    <span class="doc-dept">{{ doc.category || 'General Department' }}</span>
+                  </div>
+                </div>
+              </td>
+
+              <!-- Number -->
+              <td class="col-number">
+                <span class="code-text">{{ doc.number || 'N/A' }}</span>
+              </td>
+
+              <!-- Date -->
+              <td class="col-date">{{ doc.date }}</td>
+
+              <!-- Origin Tag -->
+              <td class="col-origin">
+                <span class="tag-badge" [class.scraped-tag]="doc.origin === 'SCRAPED'" [class.manual-tag]="doc.origin === 'MANUAL'">
+                  {{ doc.origin === 'SCRAPED' ? 'Scraped' : 'Manual' }}
+                </span>
+              </td>
+
+              <!-- Status Pill -->
+              <td class="col-status">
+                <span class="status-pill" [ngClass]="doc.status.toLowerCase()">
+                  <span class="dot"></span>
+                  {{ doc.status }}
+                </span>
+              </td>
+
+              <!-- Actions -->
+              <td class="col-actions">
+                <div class="action-buttons">
+                  <a [routerLink]="['/verification', doc.document_id]" class="icon-btn" title="View Document & Verification">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </a>
+                  <button class="icon-btn" (click)="reindexDoc(doc.document_id)" title="Trigger Re-Indexing">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6"/><path d="M2 11.5a10 10 0 0 1 18.8-4.3L21.5 8M22 12.5a10 10 0 0 1-18.8 4.2L2.5 16"/></svg>
+                  </button>
+                  <button class="icon-btn danger" (click)="deleteDoc(doc.document_id)" title="Delete Document">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination Footer -->
+    <div class="pagination">
+      <span class="page-info">Showing 1 to {{ filteredDocuments.length }} of {{ totalDocuments }} documents</span>
+      <div class="page-controls">
+        <select class="per-page-select">
+          <option>10 per page</option>
+          <option>25 per page</option>
+        </select>
+
+        <div class="btn-group">
+          <button class="page-btn disabled">&laquo;</button>
+          <button class="page-btn active">1</button>
+          <button class="page-btn">2</button>
+          <button class="page-btn">3</button>
+          <button class="page-btn">&raquo;</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Pre-Flight Upload Modal -->
+@if (showUploadModal) {
+  <div class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Upload Regulatory Document</h3>
+        <button class="close-btn" (click)="closeUploadModal()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Document Title *</label>
+          <input type="text" [(ngModel)]="newDocTitle" placeholder="e.g. Circular N° 2026-06 on Foreign Exchange" />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Circular Number</label>
+            <input type="text" [(ngModel)]="newDocNumber" placeholder="e.g. CB-CIRC-2026-06" />
+          </div>
+
+          <div class="form-group">
+            <label>Category / Department</label>
+            <input type="text" [(ngModel)]="newDocCategory" placeholder="e.g. Monetary Policy" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Select Document File (PDF, DOCX, TXT) *</label>
+          <input type="file" (change)="onFileSelected($event)" accept=".pdf,.docx,.txt" />
+        </div>
+
+        <div class="info-callout">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          <span>Uploading will request a pre-signed SAS token, push binary to blob storage, and trigger the AI event architecture.</span>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeUploadModal()">Cancel</button>
+        <button class="btn btn-primary" [disabled]="!newDocTitle || !selectedFile || isUploading" (click)="submitUpload()">
+          @if (isUploading) { Processing... } @else { Start Upload & Index }
+        </button>
+      </div>
+    </div>
+  </div>
+}
