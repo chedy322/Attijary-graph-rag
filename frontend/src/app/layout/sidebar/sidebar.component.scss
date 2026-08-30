@@ -1,5 +1,7 @@
 .sidebar {
   width: 260px;
+  min-width: 0;
+  flex: 0 0 260px;
   height: 100vh;
   background-color: #0b1329;
   color: #94a3b8;
@@ -13,6 +15,7 @@
 
   &.collapsed {
     width: 72px;
+    flex-basis: 72px;
 
     .brand {
       padding: 20px 0;

@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../core/services';
-import { UserRole } from '../../core/models';
 
 @Component({
   selector: 'app-auth',
@@ -20,20 +19,23 @@ export class AuthComponent implements OnInit {
   activeTab: 'signin' | 'signup' = 'signin';
   showPassword = false;
   isLoading = false;
+  errorMessage: string | null = null;
 
-  // Form Fields
-  email = 'you@centralbank.int';
+  // Form Fields - Ensure all properties used in template exist here
+  email = '';
   password = '';
-  firstname = '';
-  lastname = '';
-  rolePreference: UserRole = 'ADMIN';
+  firstname = ''; // Added to match [(ngModel)]="firstname"
+  lastname = '';  // Added to fix the NG9 error
 
-  returnUrl = '/dashboard';
+  returnUrl = '/chat';
 
   ngOnInit(): void {
     const returnUrlParam = this.route.snapshot.queryParams['returnUrl'];
     if (returnUrlParam) {
       this.returnUrl = returnUrlParam;
+    }
+    if (this.authService.isAuthenticated()) {
+      void this.router.navigateByUrl(this.returnUrl);
     }
   }
 
@@ -49,26 +51,22 @@ export class AuthComponent implements OnInit {
     if (!this.email || this.isLoading) return;
 
     this.isLoading = true;
+    this.errorMessage = null;
 
-    // Trigger Clerk sync flow
-    this.authService.login(this.email, this.rolePreference).subscribe({
+    this.authService.login(this.email, this.password).subscribe({
       next: (profile) => {
         this.isLoading = false;
-        // Redirect based on role
-        if (profile.role === 'ADMIN') {
-          this.router.navigate(['/dashboard']);
-        } else {
-          this.router.navigate(['/chat']);
-        }
+        this.router.navigate([
+          profile?.role === 'ADMIN' ? '/documents' : '/chat',
+        ]);
       },
-      error: () => {
+      error: (err) => {
         this.isLoading = false;
-        // Fallback navigation
-        if (this.rolePreference === 'ADMIN') {
-          this.router.navigate(['/dashboard']);
-        } else {
-          this.router.navigate(['/chat']);
-        }
+        console.error('Login/Sync failed:', err);
+        this.errorMessage =
+          err?.error?.message ||
+          err?.message ||
+          'Failed to sync user with backend server.';
       },
     });
   }

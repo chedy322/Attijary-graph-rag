@@ -1,15 +1,30 @@
-# name: CD - Backend
+name: CD - Backend
 
-# on:
-#   push:
-#     branches:
-#       - main
-#     paths:
-#       - 'backend/**'
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
 
-# concurrency:
-#   group: cd-backend-production
-#   cancel-in-progress: true
+concurrency:
+  group: cd-backend-production
+  cancel-in-progress: true
 
-# jobs:
-#     # cd-backend:
+jobs:
+    cd-backend:
+        runs-on: ubuntu-latest
+        environment: production
+        strategy:
+            fail-fast: true
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                fetch-depth: 0
+
+            - name: Echo Backend Deployment
+              run: echo "Deploying backend application to production environment"
+             
+    
+           

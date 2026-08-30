@@ -1,9 +1,14 @@
 <div class="app-layout">
+  @if (apiErrorService.message(); as message) {
+    <div class="global-error" role="alert">
+      {{ message }}
+      <button type="button" (click)="apiErrorService.clear()" aria-label="Dismiss error">&times;</button>
+    </div>
+  }
   @if (!isAuthPage) {
     <app-sidebar
       [userRole]="currentUserRole"
       [isCollapsed]="isSidebarCollapsed"
-      (roleChange)="onRoleChanged($event)"
       (toggleCollapse)="onToggleSidebar()"
     ></app-sidebar>
   }

@@ -1,7 +1,8 @@
+import re
 import uuid
 import logging
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List,Tuple
 from models.document import DocumentStatus
 from config.database import db
 from config.llm import llm_singleton
@@ -16,7 +17,11 @@ from langchain.agents import create_agent
 from langchain.tools import tool
 from services.graph_service import GraphService, graph_service
 from services.vector_service import VectorService
-
+# from langchain.agents import AgentExecutor, create_tool_calling_agent
+from langchain.tools import tool
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.messages import HumanMessage, AIMessage
+from langchain_classic.agents import AgentExecutor, create_tool_calling_agent
 import asyncio
 
 logger = logging.getLogger(__name__)
@@ -32,35 +37,79 @@ class AgentService:
         graph_service=graph_service,
     ):
         self.llm = llm.get_llm()
-        self.vector_service = (vector_service,)
+        self.vector_service = vector_service
         self.graph_service = graph_service
         self.tools = self.create_agent_tools(
-            graph_service=graph_service, vector_service=vector_service
+            graph_service=graph_service, vector_service=vector_service)
+
+        # Improved, highly directive System Prompt
+        system_prompt_template = """You are an expert, professional Regulatory Assistant.
+        Your primary role is to answer user queries accurately based on the provided document context, knowledge graph data, and conversation history.
+
+        Key Instructions:
+        1. BEFORE calling any tool, check if the retrieved text from previous tool steps already contains the necessary details.
+        2. If a tool call returns clear, relevant excerpt text, DO NOT run additional tool searches. Formulate your final response immediately.
+        3. Call at most ONE search tool per query unless the initial search yields zero context or explicitly fails.
+        4. Prefer 'hybrid_search_tool' for specific factual or legal questions.
+        5. Always cite your sources using document names and page numbers (e.g., "According to [Title], Page [X]").
+        6. Rely strictly on the provided tool context. If the answer is unavailable, state this clearly.
+        7. Append a confidence tag at the very end of your response formatted exactly as:
+        CONFIDENCE_SCORE: <float between 0.00 and 1.00>
+        """
+
+        # Setup the modern Tool Calling Agent prompt
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", system_prompt_template),
+            MessagesPlaceholder(variable_name="chat_history"),
+            ("user", "{input}"),
+            MessagesPlaceholder(variable_name="agent_scratchpad"),
+        ])
+
+        # Initialize the Agent and Executor
+        agent = create_tool_calling_agent(self.llm, self.tools, prompt)
+        self.agent_executor = AgentExecutor(
+            agent=agent, 
+            tools=self.tools, 
+            max_iterations=4,
+            early_stopping_method="force",
+            verbose=True, 
+            return_intermediate_steps=True
         )
-        self.agent_executor = create_agent(model=self.llm, tools=self.tools)
 
     def create_agent_tools(
         self, graph_service: GraphService, vector_service: VectorService
     ):
-        """Creates tool bindings injected with active service instances."""
+        """Creates tool bindings using artifacts to separate LLM text context from rich metadata."""
 
         @tool
-        def local_graph_search_tool(entities: List[str]) -> str:
-            """Search Neo4j and Weaviate for entity relationships and relevant document passages."""
+        def local_graph_search_tool(entities: List[str]) ->  Dict[str, Any]:
+            """FALLBACK ONLY. Use ONLY when hybrid_search fails or when explicit entity relationships are asked."""
             result = graph_service.local_graph_search(entities, vector_service)
-            return result["context"]
+            return {
+                "context": result.get("context", ""),
+                "sources": result.get("sources", []),
+                "graph_context": result.get("graph_context", [])
+            }
 
         @tool
-        def global_graph_search_tool(query: str) -> str:
+        def global_graph_search_tool(query: str) -> Dict[str, Any]:
             """Search top-level community summaries in the knowledge graph for broader context."""
             result = graph_service.global_graph_search(query)
-            return result["context"]
+            return {
+        "context": result.get("context", ""),
+        "sources": result.get("sources", []),
+        "graph_context": result.get("graph_context", [])
+    }
 
         @tool
-        def hybrid_search_tool(query: str) -> str:
-            """Perform dense vector + BM25 keyword search across all vector documents."""
+        def hybrid_search_tool(query: str) -> Dict[str, Any]:
+            """PRIMARY TOOL. Use this first for all factual, legal, or document-specific questions."""
             result = vector_service.hybrid_search(query)
-            return result["context"]
+            return {
+        "context": result.get("context", ""),
+        "sources": result.get("sources", []),
+        "graph_context": result.get("graph_context", [])
+    }
 
         return [local_graph_search_tool, global_graph_search_tool, hybrid_search_tool]
 
@@ -90,7 +139,7 @@ class AgentService:
 
         user = self._get_user(clerk_user_id)
 
-        # 1. Chat Session Check & Creation
+        # Chat Session Check & Creation
         if not chat_id:
             title = query.strip()[:50]
             chat = Chat(
@@ -113,7 +162,7 @@ class AgentService:
             if not chat:
                 raise Exception("Chat session not found", 404)
 
-        # 2. Persist User Message
+        # Persist User Message
         user_conv = Conversation(
             chat_id=chat.chat_id,
             role=ConversationRole.USER,
@@ -122,70 +171,7 @@ class AgentService:
         db.session.add(user_conv)
         db.session.commit()
 
-        # 3. Hybrid Search Retrieval
-        retrieved_chunks = []
-        try:
-            retrieved_chunks = vector_service.hybrid_search(query=query)
-            print(retrieved_chunks)
-        except Exception as e:
-            logger.warning(
-                f"Hybrid search failed, continuing without vector context: {str(e)}"
-            )
-
-        # Hydrate document metadata from Postgres
-        # only return the document with the status ACTIVE_COMPLETED, and ignore the others
-        sources = []
-        doc_ids = list(
-            {
-                chunk["document_id"]
-                for chunk in retrieved_chunks
-                if chunk.get("document_id")
-            }
-        )
-        doc_map = {}
-        if doc_ids:
-            try:
-                doc_uuids = [uuid.UUID(did) for did in doc_ids if did]
-                # Document Id should be indexed in the database, but we will filter by ACTIVE_COMPLETED status to ensure we only return valid documents
-                docs = (
-                    db.session.query(Document)
-                    .filter(Document.document_id.in_(doc_uuids))
-                    .filter(Document.status == DocumentStatus.ACTIVE_COMPLETED)
-                    .all()
-                )
-                doc_map = {str(d.document_id): d for d in docs}
-            except Exception as e:
-                logger.warning(f"Failed to fetch document metadata: {str(e)}")
-
-        max_score = 0.0
-        for chunk in retrieved_chunks:
-            did = chunk.get("document_id")
-            doc = doc_map.get(did)
-            doc_title = doc.title if doc else "Regulatory Document"
-            doc_file = (
-                doc.file_path.rsplit("/", 1)[-1]
-                if doc and doc.file_path
-                else "document.pdf"
-            )
-            score = chunk.get("score") or 0.0
-            if score > max_score:
-                max_score = score
-            sources.append(
-                {
-                    "document_id": did or "",
-                    "document": doc_file,
-                    "title": doc_title,
-                    "page": chunk.get("page_number", 1),
-                    "snippet": chunk.get("text", ""),
-                }
-            )
-
-        # Calculate confidence score (normalized 0-100)
-        confidence_score = (
-            round(min(100.0, max(50.0, max_score * 100)), 1) if max_score > 0 else 85.0
-        )
-        # Add reranker model
-        # 4. Fetch Previous History & Format LLM Prompt
+        #  Search history 
         history = (
             db.session.query(Conversation)
             .filter_by(chat_id=chat.chat_id)
@@ -193,62 +179,79 @@ class AgentService:
             .all()
         )
 
-        history_text = (
-            "\n".join([f"{c.role.value}: {c.content}" for c in history[:-1]])
-            if len(history) > 1
-            else ""
-        )  # exclude last inserted user query to avoid duplicate
-
-        context_snippets = "\n\n".join(
-            [
-                f"[Source: {s['title']}, Page {s['page']}]\n{s['snippet']}"
-                for s in sources
-            ]
-        )
-
-        system_prompt = f"""You are a professional Regulatory Assistant.
-Answer the user's query accurately based on the provided document context and conversation history.
-If the context does not contain the answer, rely on regulatory principles while noting limitations. Always cite document names and page numbers when available.
-
---- CONTEXT SNIPPETS ---
-{context_snippets if context_snippets else 'No context snippets available.'}
-
---- CONVERSATION HISTORY ---
-{history_text if history_text else 'No previous conversation.'}
-
---- USER QUERY ---
-{query}
-
-Answer:"""
-
-        # Call LLM
+        # Convert the history to langchain history format
+        langchain_history = []
+        for msg in history[:-1]:
+            if msg.role.value == ConversationRole.USER:
+                langchain_history.append(HumanMessage(content=msg.content))
+            elif msg.role.value == ConversationRole.ASSISTANT:
+                langchain_history.append(AIMessage(content=msg.content))
+        # Call the ai agent_executor to process the query with tools and context
         try:
-            llm = llm_singleton.get_llm()
-            llm_response = llm.invoke(system_prompt)
-            content_str = llm_response.content
-            if isinstance(content_str, list):
-                # Extract 'text' from block list: [{'type': 'text', 'text': '...'}]
-                text_blocks = []
-                for item in content_str:
-                    if isinstance(item, str):
-                        text_blocks.append(item)
-                    elif isinstance(item, dict) and item.get("type") == "text":
-                        text_blocks.append(item.get("text", ""))
-                answer_text = "\n".join(text_blocks)
-            elif not isinstance(content_str, str):
-                answer_text = str(content_str)
-
+            agent_response = self.agent_executor.invoke({"input": query, "chat_history": langchain_history})
+            # print(f"Agent response: {agent_response}")
+            raw_output = agent_response.get("output", "I'm sorry, I couldn't process an answer. ")
+            # print(f"Agent output: {raw_output}")
+            if isinstance(raw_output, list):
+                # Joins text blocks from content blocks
+                agent_output = "\n".join([
+                    block.get("text", "") for block in raw_output 
+                    if isinstance(block, dict) and block.get("type") == "text"
+                ])
+            elif isinstance(raw_output, dict):
+                agent_output = raw_output.get("text", str(raw_output))
+            else:
+                agent_output = str(raw_output)
+            intermediate_steps = agent_response.get("intermediate_steps", [])
         except Exception as e:
-            logger.error(f"LLM execution failed: {str(e)}")
-            answer_text = "I'm sorry, I encountered an error generating a response. Please try again."
+            logger.error(f"Agent execution failed: {str(e)}")
+            agent_output = "I'm sorry, I encountered an error generating a response. Please try again."
+            intermediate_steps = []
+        # 
+        extracted_sources = []
+        extracted_graph_context = []
+        for action, tool_output in intermediate_steps:
+            artifact = None
+            if isinstance(tool_output, tuple) and len(tool_output) == 2:
+                _, artifact = tool_output
+            if isinstance(tool_output, dict):
+                artifact = tool_output
+            if isinstance(artifact, dict):
+                extracted_sources.extend(artifact.get("sources", []))
+                extracted_graph_context.extend(artifact.get("graph_context", []))
 
-        # 5. Persist Assistant Response
+        # Remove duplicate sources from the intermediate_steps as agent cab call multiple tools
+        seen_sources=set()
+        deduplicated_sources=[]
+        for src in extracted_sources:
+            doc_id=src.get("document_id") or f"{src.get('title')}_{src.get('page_number')}"
+            if doc_id not in seen_sources:
+                deduplicated_sources.append(src)
+                seen_sources.add(doc_id)
+
+    
+        confidence_match = re.search(r"CONFIDENCE_SCORE:\s*([0-9\.]+)", agent_output)
+        if confidence_match:
+            try:
+                confidence_score = float(confidence_match.group(1))
+            except ValueError:
+                confidence_score = 0.70
+            # Strip tag so users don't see raw metadata
+            answer_text = re.sub(r"CONFIDENCE_SCORE:\s*[0-9\.]+", "", agent_output).strip()
+        else:
+            # Fallback heuristic: Higher if tools retrieved context, lower if direct generation
+            confidence_score = 0.85 if intermediate_steps else 0.60
+            answer_text = agent_output.strip()
+
+
+
+        # Persist Assistant Response
         rag_source = {
-            "confidence_score": confidence_score,
-            "sources": sources,
-            "graph_context": [],
+            "confidence_score": round(confidence_score, 2),
+            "sources": extracted_sources,
+            "graph_context": extracted_graph_context,
         }
-
+        # Store the assistant's response in the database
         assistant_conv = Conversation(
             chat_id=chat.chat_id,
             role=ConversationRole.ASSISTANT,
@@ -258,7 +261,7 @@ Answer:"""
         db.session.add(assistant_conv)
         db.session.commit()
 
-        # 6. Return Response Matching Exact API Schema
+        # Return Response Matching Exact API Schema
         created_at_iso = (
             assistant_conv.created_at.isoformat()
             if assistant_conv.created_at
@@ -273,6 +276,8 @@ Answer:"""
             "created_at": created_at_iso,
             "rag_source": rag_source,
         }
+
+    
 
     def fetch_chats(self, clerk_user_id: str) -> List[Dict[str, Any]]:
         """Fetch all chat sessions for a user."""

@@ -18,11 +18,12 @@ export class ChatInterfaceComponent implements OnInit {
 
   chats: Chat[] = [];
   activeChatId: string | null = null;
-  activeChatTitle = 'Reserve requirements';
+  activeChatTitle = 'New Chat Session';
   messages: Conversation[] = [];
   userPrompt = '';
   isThinking = false;
   activeTab: 'all' | 'today' | 'week' | 'older' = 'all';
+  errorMessage: string | null = null;
 
   ngOnInit(): void {
     this.route.params.subscribe((params) => {
@@ -44,63 +45,15 @@ export class ChatInterfaceComponent implements OnInit {
             this.selectChat(this.chats[0].chat_id);
           }
         } else {
-          this.loadMockSessions();
+          this.chats = [];
         }
       },
-      error: () => {
-        this.loadMockSessions();
+      error: (err) => {
+        this.chats = [];
+        this.messages = [];
+        this.errorMessage = this.getErrorMessage(err, 'Unable to load chat sessions.');
       },
     });
-  }
-
-  private loadMockSessions(): void {
-    this.chats = [
-      {
-        chat_id: 'chat-1',
-        user_id: 'user-1',
-        created_at: '10:24 AM',
-        title: 'Reserve requirements',
-      },
-      {
-        chat_id: 'chat-2',
-        user_id: 'user-1',
-        created_at: 'Yesterday',
-        title: 'Anti-Money Laundering (AML)',
-      },
-      {
-        chat_id: 'chat-3',
-        user_id: 'user-1',
-        created_at: 'Yesterday',
-        title: 'Capital Adequacy Ratio (CAR)',
-      },
-      {
-        chat_id: 'chat-4',
-        user_id: 'user-1',
-        created_at: 'Jun 1',
-        title: 'Liquidity Coverage Ratio (LCR)',
-      },
-      {
-        chat_id: 'chat-5',
-        user_id: 'user-1',
-        created_at: 'May 30',
-        title: 'KYC Requirements',
-      },
-      {
-        chat_id: 'chat-6',
-        user_id: 'user-1',
-        created_at: 'May 29',
-        title: 'Stress Testing Guidelines',
-      },
-      {
-        chat_id: 'chat-7',
-        user_id: 'user-1',
-        created_at: 'May 28',
-        title: 'Foreign Exchange Controls',
-      },
-    ];
-    if (!this.activeChatId) {
-      this.selectChat('chat-1');
-    }
   }
 
   selectChat(chatId: string): void {
@@ -119,75 +72,17 @@ export class ChatInterfaceComponent implements OnInit {
   }
 
   loadChatMessages(chatId: string): void {
+    this.errorMessage = null;
     this.agentService.getChatMessages(chatId).subscribe({
       next: (res) => {
-        if (res && res.messages && res.messages.length > 0) {
-          this.messages = res.messages;
-        } else {
-          this.loadMockMessages();
-        }
+        this.messages = res.messages;
+        this.activeChatTitle = res.title || 'Conversation';
       },
-      error: () => {
-        this.loadMockMessages();
+      error: (err) => {
+        this.messages = [];
+        this.errorMessage = this.getErrorMessage(err, 'Unable to load this chat conversation.');
       },
     });
-  }
-
-  private loadMockMessages(): void {
-    this.messages = [
-      {
-        conversation_id: 'conv-1',
-        chat_id: this.activeChatId || 'chat-1',
-        role: 'USER',
-        content:
-          'What are the current reserve requirements for commercial banks in local currency?',
-        created_at: '10:24 AM',
-        rag_source: null,
-      },
-      {
-        conversation_id: 'conv-2',
-        chat_id: this.activeChatId || 'chat-1',
-        role: 'ASSISTANT',
-        content:
-          'According to the Central Bank regulations, the current reserve requirements for commercial banks in local currency are as follows:\n\n• Demand deposits: 10% of the total amount\n• Time and savings deposits: 5% of the total amount\n• These requirements are applicable to all banks licensed by the Central Bank.\n\nBanks must maintain these reserves in eligible accounts with the Central Bank on a daily average basis.',
-        created_at: '10:24 AM',
-        rag_source: {
-          confidence_score: 88.5,
-          sources: [
-            {
-              document_id: 'cb-circ-2026-05',
-              document: 'Circular_2026_05_Reserve_Req.pdf',
-              title: 'Circular N° 2026-05 on Reserve Requirements',
-              page: 4,
-              snippet:
-                'Banks must maintain reserve balances in eligible accounts with the Central Bank...',
-            },
-            {
-              document_id: 'cb-circ-2022-12',
-              document: 'Circular_2022_12_Reserve_Req.pdf',
-              title: 'Circular N° 2022-12 on Reserve Requirements',
-              page: 1,
-              snippet: 'Prior reserve requirement standards...',
-            },
-            {
-              document_id: 'cb-manual',
-              document: 'Reserve_Requirements_Manual.pdf',
-              title: 'Reserve Requirements Compliance Manual',
-              page: 12,
-              snippet: 'Operational compliance procedures...',
-            },
-          ],
-          graph_context: [
-            {
-              source_node: 'Circular N° 2026-05',
-              relationship: 'MODIFIES',
-              target_node: 'Circular N° 2022-12',
-              graph_path: '(Circular 2026-05)-[:MODIFIES]->(Circular 2022-12)',
-            },
-          ],
-        },
-      },
-    ];
   }
 
   sendQuery(): void {
@@ -195,6 +90,7 @@ export class ChatInterfaceComponent implements OnInit {
 
     const query = this.userPrompt;
     this.userPrompt = '';
+    this.errorMessage = null;
 
     // Push User message turn
     const userMsg: Conversation = {
@@ -232,42 +128,32 @@ export class ChatInterfaceComponent implements OnInit {
           };
           this.messages.push(assistantMsg);
         },
-        error: () => {
-          // Fallback response for demo
-          setTimeout(() => {
-            this.isThinking = false;
-            const assistantMsg: Conversation = {
-              conversation_id: 'conv-' + Date.now(),
-              chat_id: this.activeChatId || 'chat-1',
-              role: 'ASSISTANT',
-              content: `Based on Central Bank Circulars and Neo4j Graph analysis, your query regarding "${query}" relates directly to regulatory compliance standards established under Circular N° 2026-05.`,
-              created_at: new Date().toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit',
-              }),
-              rag_source: {
-                confidence_score: 92.0,
-                sources: [
-                  {
-                    document_id: 'cb-circ-2026-05',
-                    document: 'Circular_2026_05_Reserve_Req.pdf',
-                    title: 'Circular N° 2026-05',
-                    page: 3,
-                    snippet: 'Mandatory ratios...',
-                  },
-                ],
-                graph_context: [
-                  {
-                    source_node: 'Circular N° 2026-05',
-                    relationship: 'MODIFIES',
-                    target_node: 'Circular N° 2022-12',
-                  },
-                ],
-              },
-            };
-            this.messages.push(assistantMsg);
-          }, 1200);
+        error: (err) => {
+          this.isThinking = false;
+          this.errorMessage = this.getErrorMessage(err, 'Unable to process your query.');
         },
       });
+  }
+
+  deleteChat(chatId: string, event: Event): void {
+    event.stopPropagation();
+    this.agentService.deleteChat(chatId).subscribe({
+      next: () => {
+        this.chats = this.chats.filter((chat) => chat.chat_id !== chatId);
+        if (this.activeChatId === chatId) {
+          this.activeChatId = null;
+          this.messages = [];
+          this.activeChatTitle = 'New Chat Session';
+        }
+      },
+      error: (err) => {
+        this.errorMessage = this.getErrorMessage(err, 'Unable to delete this chat.');
+      },
+    });
+  }
+
+  private getErrorMessage(error: unknown, fallback: string): string {
+    const response = error as { error?: { message?: string }; message?: string };
+    return response.error?.message || response.message || fallback;
   }
 }

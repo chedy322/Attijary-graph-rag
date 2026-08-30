@@ -2,7 +2,7 @@
   <!-- Top Navigation & Action Header -->
   <header class="top-nav">
     <div class="breadcrumbs">
-      <a routerLink="/dashboard">Home</a>
+      <a routerLink="/documents">Home</a>
       <span class="sep">&gt;</span>
       <a routerLink="/documents">Documents</a>
       <span class="sep">&gt;</span>
@@ -131,30 +131,21 @@
           </div>
         }
 
-        <!-- PDF Document Rendering Page -->
         <div class="document-viewport">
           <div class="pdf-page" [style.transform]="'scale(' + (zoomLevel / 100) + ')'">
             <div class="pdf-header">
-              <span class="pdf-title">Circular N° 2026-05</span>
-              <span class="pdf-sub">Reserve Requirements for Commercial Banks</span>
+              <span class="pdf-title">{{ document?.title }}</span>
+              <span class="pdf-sub">{{ document?.category }}</span>
             </div>
 
             <div class="pdf-section">
-              <h3>3. RESERVE REQUIREMENTS</h3>
-
-              <h4>3.1 General Provisions</h4>
-              <p>In accordance with Article 42 of the Banking Act, commercial banks shall maintain reserve balances in eligible accounts with the Central Bank as specified in this Circular.</p>
-
-              <!-- Exact Match Yellow Highlight snippet from RAG Engine -->
-              <div class="highlight-snippet">
-                <p><strong>Banks must maintain reserve balances in eligible accounts with the Central Bank as follows: (a) Demand deposits: 10% of the total amount; (b) Time and savings deposits: 5% of the total amount. These requirements are applicable to all banks licensed by the Central Bank.</strong></p>
-              </div>
-
-              <h4>3.2 Calculation of Reserve Requirements</h4>
-              <p>Reserve requirements shall be calculated on a daily average basis using the end-of-day balances of the applicable deposit categories.</p>
-
-              <h4>3.3 Eligible Accounts</h4>
-              <p>Reserve balances must be maintained in the settlement accounts held by the bank with the Central Bank and must be freely available.</p>
+              <p>Document ID: {{ document?.document_id }}</p>
+              <p>Number: {{ document?.number || 'Not provided' }}</p>
+              <p>Date: {{ document?.date }}</p>
+              <p>Status: {{ document?.status }}</p>
+              @if (document?.file_path) {
+                <a [href]="document?.file_path" target="_blank" rel="noopener">Open source document</a>
+              }
             </div>
 
             <div class="pdf-footer">

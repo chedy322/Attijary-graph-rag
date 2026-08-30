@@ -37,9 +37,9 @@ export interface DocumentListResponse {
 export interface UploadUrlRequest {
   filename: string;
   title: string;
-  number?: string;
-  category?: string;
-  date?: string;
+  number: string;
+  category: string;
+  date: string;
 }
 
 export interface UploadUrlResponse {

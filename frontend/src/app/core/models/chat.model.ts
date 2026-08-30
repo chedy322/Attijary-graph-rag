@@ -62,7 +62,7 @@ export interface ChatListResponse {
 
 export interface ChatMessagesResponse {
   chat_id: string;
-  title: string;
+  title: string | null;
   messages: Conversation[];
 }
 

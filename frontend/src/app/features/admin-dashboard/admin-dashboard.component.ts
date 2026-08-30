@@ -2,8 +2,8 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { DocumentService, ScraperService } from '../../core/services';
-import { Document, DocumentStatus, DocumentOrigin } from '../../core/models';
+import { AuthService, DocumentService, ScraperService } from '../../core/services';
+import { Document } from '../../core/models';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -15,14 +15,15 @@ import { Document, DocumentStatus, DocumentOrigin } from '../../core/models';
 export class AdminDashboardComponent implements OnInit {
   private documentService = inject(DocumentService);
   private scraperService = inject(ScraperService);
+  protected authService = inject(AuthService);
 
   documents: Document[] = [];
   filteredDocuments: Document[] = [];
 
-  // Metrics
-  totalIndexed = 12458;
-  activeScraperSyncs = 7;
-  failedPipelines = 3;
+  // State Management
+  isLoading = false;
+  errorMessage: string | null = null;
+  scraperMessage: string | null = null;
 
   // Search & Filters
   searchTerm = '';
@@ -40,130 +41,52 @@ export class AdminDashboardComponent implements OnInit {
   newDocTitle = '';
   newDocNumber = '';
   newDocCategory = '';
+  newDocDate = '';
   selectedFile: File | null = null;
-
-  // Scraper Sync Status
-  scraperMessage = '';
 
   ngOnInit(): void {
     this.loadDocuments();
   }
 
+  get totalIndexed(): number {
+    return this.totalDocuments || this.documents.length;
+  }
+
+  get activeScraperSyncs(): number {
+    return this.documents.filter((d) => d.status === 'PROCESSING').length;
+  }
+
+  get failedPipelines(): number {
+    return this.documents.filter((d) => d.status === 'FAILED').length;
+  }
+
+  clearError(): void {
+    this.errorMessage = null;
+  }
+
   loadDocuments(): void {
+    this.isLoading = true;
+    this.errorMessage = null;
+
     this.documentService
       .getDocuments({ page: this.currentPage, limit: this.pageSize })
       .subscribe({
         next: (response) => {
-          if (response && response.documents && response.documents.length > 0) {
-            this.documents = response.documents;
-            this.totalDocuments = response.total;
-          } else {
-            this.loadMockDocuments();
-          }
+          this.isLoading = false;
+          this.documents = response.documents || [];
+          this.totalDocuments = response.total || this.documents.length;
           this.applyFilters();
         },
-        error: () => {
-          this.loadMockDocuments();
-          this.applyFilters();
+        error: (err) => {
+          this.isLoading = false;
+          this.errorMessage =
+            err?.error?.message ||
+            err?.message ||
+            'Failed to load documents from backend service.';
+          this.documents = [];
+          this.filteredDocuments = [];
         },
       });
-  }
-
-  private loadMockDocuments(): void {
-    this.documents = [
-      {
-        document_id: 'cb-circ-2026-05',
-        title: 'Reserve Requirements for Commercial Banks',
-        number: 'CB-CIRC-2026-05',
-        date: 'May 15, 2026 10:24 AM',
-        category: 'Monetary Policy Department',
-        file_path: 'documents/cb-circ-2026-05.pdf',
-        file_extension: 'pdf',
-        status: 'COMPLETED',
-        origin: 'MANUAL',
-        source_url: null,
-        uploaded_by_user_id: 'admin-1',
-      },
-      {
-        document_id: 'cb-circ-2026-04',
-        title: 'Capital Adequacy Framework (Revised)',
-        number: 'CB-CIRC-2026-04',
-        date: 'May 15, 2026 09:15 AM',
-        category: 'Monetary Policy Department',
-        file_path: 'documents/cb-circ-2026-04.pdf',
-        file_extension: 'pdf',
-        status: 'PROCESSING',
-        origin: 'MANUAL',
-        source_url: null,
-        uploaded_by_user_id: 'admin-1',
-      },
-      {
-        document_id: 'cb-circ-2026-03',
-        title: 'FX Position Limits',
-        number: 'CB-CIRC-2026-03',
-        date: 'May 15, 2026 08:42 AM',
-        category: 'Financial Stability Department',
-        file_path: 'documents/cb-circ-2026-03.pdf',
-        file_extension: 'pdf',
-        status: 'COMPLETED',
-        origin: 'SCRAPED',
-        source_url: 'https://centralbank.gov/circulars/2026-03.pdf',
-        uploaded_by_user_id: null,
-      },
-      {
-        document_id: 'cb-circ-2026-02',
-        title: 'Anti-Money Laundering Guidelines',
-        number: 'CB-CIRC-2026-02',
-        date: 'May 14, 2026 06:30 PM',
-        category: 'Supervision Department',
-        file_path: 'documents/cb-circ-2026-02.pdf',
-        file_extension: 'pdf',
-        status: 'COMPLETED',
-        origin: 'SCRAPED',
-        source_url: 'https://centralbank.gov/circulars/2026-02.pdf',
-        uploaded_by_user_id: null,
-      },
-      {
-        document_id: 'cb-circ-2026-01',
-        title: 'Liquidity Coverage Ratio (LCR) Rules',
-        number: 'CB-CIRC-2026-01',
-        date: 'May 14, 2026 04:22 PM',
-        category: 'Monetary Policy Department',
-        file_path: 'documents/cb-circ-2026-01.pdf',
-        file_extension: 'pdf',
-        status: 'FAILED',
-        origin: 'MANUAL',
-        source_url: null,
-        uploaded_by_user_id: 'admin-1',
-      },
-      {
-        document_id: 'cb-circ-2025-12',
-        title: 'Interest Rate Corridor Operations',
-        number: 'CB-CIRC-2025-12',
-        date: 'May 14, 2026 02:10 PM',
-        category: 'Monetary Policy Department',
-        file_path: 'documents/cb-circ-2025-12.pdf',
-        file_extension: 'pdf',
-        status: 'PENDING_UPLOAD',
-        origin: 'SCRAPED',
-        source_url: 'https://centralbank.gov/circulars/2025-12.pdf',
-        uploaded_by_user_id: null,
-      },
-      {
-        document_id: 'cb-circ-2025-11',
-        title: 'Payment Systems Oversight Framework',
-        number: 'CB-CIRC-2025-11',
-        date: 'May 14, 2026 11:05 AM',
-        category: 'Payment Systems Department',
-        file_path: 'documents/cb-circ-2025-11.pdf',
-        file_extension: 'pdf',
-        status: 'COMPLETED',
-        origin: 'MANUAL',
-        source_url: null,
-        uploaded_by_user_id: 'admin-1',
-      },
-    ];
-    this.totalDocuments = 48;
   }
 
   applyFilters(): void {
@@ -187,15 +110,19 @@ export class AdminDashboardComponent implements OnInit {
 
   triggerSyncScraper(): void {
     this.scraperMessage = 'Triggering web scraper sync...';
+    this.errorMessage = null;
+
     this.scraperService.triggerSync().subscribe({
       next: (res) => {
         this.scraperMessage = `Scraper sync initiated (Task ID: ${res.task_id})`;
-        setTimeout(() => (this.scraperMessage = ''), 5000);
+        setTimeout(() => (this.scraperMessage = null), 5000);
       },
-      error: () => {
-        this.scraperMessage =
-          'Scraper sync triggered successfully (Background worker active).';
-        setTimeout(() => (this.scraperMessage = ''), 5000);
+      error: (err) => {
+        this.scraperMessage = null;
+        this.errorMessage =
+          err?.error?.message ||
+          err?.message ||
+          'Failed to trigger web scraper sync on backend.';
       },
     });
   }
@@ -209,6 +136,7 @@ export class AdminDashboardComponent implements OnInit {
     this.newDocTitle = '';
     this.newDocNumber = '';
     this.newDocCategory = '';
+    this.newDocDate = '';
     this.selectedFile = null;
   }
 
@@ -220,8 +148,12 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   submitUpload(): void {
-    if (!this.newDocTitle || !this.selectedFile) return;
+    if (!this.newDocTitle || !this.newDocDate || !this.selectedFile) {
+      this.errorMessage = 'Title, document date, and file are required.';
+      return;
+    }
     this.isUploading = true;
+    this.errorMessage = null;
 
     this.documentService
       .getUploadUrl({
@@ -229,94 +161,95 @@ export class AdminDashboardComponent implements OnInit {
         title: this.newDocTitle,
         number: this.newDocNumber,
         category: this.newDocCategory,
+        date: this.newDocDate,
       })
       .subscribe({
         next: (res) => {
-          // Direct upload to SAS URL
           if (this.selectedFile) {
             this.documentService
               .uploadFileToBlob(res.upload_url, this.selectedFile)
               .subscribe({
                 next: () => {
-                  // Trigger indexing
                   this.documentService
                     .indexDocument(res.document_id)
-                    .subscribe(() => {
-                      this.isUploading = false;
-                      this.closeUploadModal();
-                      this.loadDocuments();
+                    .subscribe({
+                      next: () => {
+                        this.isUploading = false;
+                        this.closeUploadModal();
+                        this.loadDocuments();
+                      },
+                      error: (err) => {
+                        this.isUploading = false;
+                        this.errorMessage =
+                          err?.error?.message ||
+                          'Failed to index document after upload.';
+                      },
                     });
                 },
-                error: () => {
+                error: (err) => {
                   this.isUploading = false;
-                  this.closeUploadModal();
-                  this.loadDocuments();
+                  this.errorMessage =
+                    err?.error?.message ||
+                    'Failed to push file binary to storage.';
                 },
               });
           }
         },
-        error: () => {
-          // Fallback local simulation for demo
-          const newDoc: Document = {
-            document_id: 'doc-' + Date.now(),
-            title: this.newDocTitle,
-            number: this.newDocNumber || 'CB-CIRC-2026-06',
-            date: 'Just now',
-            category: this.newDocCategory || 'General Supervision',
-            file_path: `documents/${this.selectedFile?.name}`,
-            file_extension: 'pdf',
-            status: 'PROCESSING',
-            origin: 'MANUAL',
-            source_url: null,
-            uploaded_by_user_id: 'admin-1',
-          };
-          this.documents.unshift(newDoc);
+        error: (err) => {
           this.isUploading = false;
-          this.closeUploadModal();
-          this.applyFilters();
+          this.errorMessage =
+            err?.error?.message ||
+            err?.message ||
+            'Failed to obtain pre-signed upload SAS token.';
         },
       });
   }
 
   deleteDoc(docId: string): void {
     if (
-      confirm(
+      !confirm(
         'Are you sure you want to trigger cascading deletion for this document?',
       )
     ) {
-      this.documentService.deleteDocument(docId).subscribe({
-        next: () => {
-          this.documents = this.documents.filter(
-            (d) => d.document_id !== docId,
-          );
-          this.applyFilters();
-        },
-        error: () => {
-          this.documents = this.documents.filter(
-            (d) => d.document_id !== docId,
-          );
-          this.applyFilters();
-        },
-      });
+      return;
     }
+
+    this.errorMessage = null;
+    this.documentService.deleteDocument(docId).subscribe({
+      next: () => {
+        // Strict Lifecycle Update only on HTTP 200/204 success
+        this.documents = this.documents.filter((d) => d.document_id !== docId);
+        this.applyFilters();
+      },
+      error: (err) => {
+        this.errorMessage =
+          err?.error?.message ||
+          err?.message ||
+          `Failed to delete document ${docId} on backend.`;
+      },
+    });
   }
 
   reindexDoc(docId: string): void {
-    const doc = this.documents.find((d) => d.document_id === docId);
-    if (doc) {
-      doc.status = 'PROCESSING';
-      this.documentService.indexDocument(docId).subscribe({
-        next: () => {
-          setTimeout(() => {
-            doc.status = 'COMPLETED';
-          }, 3000);
-        },
-        error: () => {
-          setTimeout(() => {
-            doc.status = 'COMPLETED';
-          }, 3000);
-        },
-      });
-    }
+    this.errorMessage = null;
+    this.documentService.indexDocument(docId).subscribe({
+      next: (res) => {
+        const doc = this.documents.find((d) => d.document_id === docId);
+        if (doc) {
+          doc.status = res.status || 'PROCESSING';
+        }
+        this.applyFilters();
+      },
+      error: (err) => {
+        this.errorMessage =
+          err?.error?.message ||
+          err?.message ||
+          `Failed to trigger re-indexing for document ${docId}.`;
+      },
+    });
+  }
+
+  canTriggerIndex(status: Document['status']): boolean {
+    return status !== 'PROCESSING' && status !== 'COMPLETED';
   }
 }

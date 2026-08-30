@@ -14,30 +14,20 @@
     }
   </div>
 
-  <!-- Role Toggle Banner (for demo testing) -->
-  @if (!isCollapsed) {
-    <div class="role-selector">
-      <span class="role-label">VIEW AS:</span>
-      <div class="role-buttons">
-        <button [class.active]="userRole === 'ADMIN'" (click)="switchRole('ADMIN')">Admin</button>
-        <button [class.active]="userRole === 'USER'" (click)="switchRole('USER')">User</button>
-      </div>
-    </div>
-  }
-
   <!-- Navigation Menu -->
   <nav class="nav-menu">
-    @if (userRole === 'ADMIN' && !isCollapsed) {
+    @if ((authService.isAdmin$ | async) && !isCollapsed) {
       <div class="section-label">ADMINISTRATION</div>
     }
 
-    @for (item of menuItems; track item.label) {
-      <a
-        [routerLink]="item.route"
-        routerLinkActive="active"
-        class="nav-item"
-        [title]="item.label"
-      >
+    @for (item of menuItems; track $index) {
+      @if (!item.adminOnly || (authService.isAdmin$ | async)) {
+        <a
+          [routerLink]="item.route"
+          routerLinkActive="active"
+          class="nav-item"
+          [title]="item.label"
+        >
         <span class="nav-icon">
           @switch (item.icon) {
             @case ('grid') {
@@ -84,12 +74,13 @@
         @if (!isCollapsed) {
           <span class="nav-label">{{ item.label }}</span>
         }
-      </a>
+        </a>
+      }
     }
   </nav>
 
   <!-- Storage / Info Widget (for User mode) -->
-  @if (userRole === 'USER' && !isCollapsed) {
+  @if (!isAdmin && !isCollapsed) {
     <div class="storage-card">
       <div class="storage-header">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -106,11 +97,11 @@
   <!-- Footer User Info & Collapse Toggle -->
   <div class="sidebar-footer">
     <div class="user-profile">
-      <div class="avatar-circle">{{ currentUser.firstname[0] }}{{ currentUser.lastname[0] }}</div>
+      <div class="avatar-circle">{{ userInitials }}</div>
       @if (!isCollapsed) {
         <div class="user-info">
-          <div class="user-name">{{ currentUser.firstname }} {{ currentUser.lastname }}</div>
-          <div class="user-email">{{ currentUser.email }}</div>
+          <div class="user-name">{{ currentUser?.firstname }} {{ currentUser?.lastname }}</div>
+          <div class="user-email">{{ currentUser?.email }}</div>
         </div>
       }
     </div>

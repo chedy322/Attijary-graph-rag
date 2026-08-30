@@ -1,146 +1,193 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap, catchError, of } from 'rxjs';
+import {
+  Observable,
+  tap,
+  catchError,
+  throwError,
+  from,
+  switchMap,
+  firstValueFrom,
+  BehaviorSubject,
+  map,
+} from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { UserProfile, UserSyncRequest } from '../models/user.model';
 
 @Injectable({
-  providedIn: 'root',
+  providedIn: 'root'
 })
 export class AuthService {
   private http = inject(HttpClient);
 
-  // Reactive state using Angular Signals
   currentUser = signal<UserProfile | null>(null);
+  readonly currentUser$ = new BehaviorSubject<UserProfile | null>(null);
   isLoaded = signal<boolean>(false);
+  isBackendSynced = signal<boolean>(false);
   sessionToken = signal<string | null>(null);
 
-  // Computed signals
-  isLoggedIn = computed(() => !!this.currentUser());
+  isLoggedIn = computed(() => !!this.sessionToken());
+  isAuthenticated = computed(
+    () => this.isLoaded() && this.isLoggedIn() && this.isBackendSynced(),
+  );
   isAdmin = computed(() => this.currentUser()?.role === 'ADMIN');
+  isAdmin$ = this.currentUser$.pipe(map((user) => user?.role === 'ADMIN'));
+  isUser$ = this.currentUser$.pipe(
+    map((user) => user?.role === 'USER' || user?.role === 'ADMIN'),
+  );
+  private initialization?: Promise<void>;
 
-  constructor() {
-    this.initClerkListener();
+  private async waitForClerk(maxRetries = 100, delayMs = 100): Promise<any> {
+    if (typeof window === 'undefined') return null;
+
+    for (let i = 0; i < maxRetries; i++) {
+      const clerk = (window as any).Clerk;
+      if (clerk) {
+        if (!clerk.loaded && typeof clerk.load === 'function') {
+          await clerk.load();
+        }
+        if (clerk.loaded || clerk.isReady) {
+          return clerk;
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+    return null;
   }
 
-  /**
-   * Listens to Clerk authentication state changes if Clerk JS SDK is available in window.
-   */
-  private initClerkListener(): void {
-    if (typeof window !== 'undefined' && (window as any).Clerk) {
-      const clerk = (window as any).Clerk;
-      clerk.addListener((state: any) => {
-        if (state.user) {
-          const clerkUser = state.user;
-          const token = state.session
-            ? state.session.lastActiveToken?.jwt
-            : null;
-          this.sessionToken.set(token);
-          this.syncUserWithBackend({
-            firstname: clerkUser.firstName || 'User',
-            lastname: clerkUser.lastName || '',
-            email: clerkUser.primaryEmailAddress?.emailAddress || '',
-            clerk_id: clerkUser.id,
-          }).subscribe();
-        } else {
-          this.currentUser.set(null);
-          this.sessionToken.set(null);
-          this.isLoaded.set(true);
-        }
+  initialize(): Promise<void> {
+    if (!this.initialization) {
+      this.initialization = this.initializeClerkSession();
+    }
+    return this.initialization;
+  }
+
+  private async initializeClerkSession(): Promise<void> {
+    const clerk = await this.waitForClerk();
+    if (!clerk) {
+      this.clearSession();
+      this.isLoaded.set(true);
+      return;
+    }
+
+    await this.applyClerkState(clerk);
+    if (typeof clerk.addListener === 'function') {
+      clerk.addListener((state: unknown) => {
+        void this.applyClerkState(state);
       });
-    } else {
+    }
+  }
+
+  private async applyClerkState(stateOrClerk: any): Promise<void> {
+    const user = stateOrClerk?.user;
+    const session = stateOrClerk?.session;
+
+    if (!user || !session) {
+      this.clearSession();
+      this.isLoaded.set(true);
+      return;
+    }
+
+    try {
+      const token = await session.getToken();
+      if (!token) {
+        throw new Error('Clerk session did not provide a token.');
+      }
+      this.sessionToken.set(token);
+      await firstValueFrom(this.syncUserWithBackend(this.toSyncRequest(user)));
+    } catch (error) {
+      console.error('Clerk session synchronization failed:', error);
+      this.clearSession();
+    } finally {
       this.isLoaded.set(true);
     }
   }
 
-  /**
-   * Synchronizes user metadata with backend database (POST /api/v1/sync).
-   */
-  syncUserWithBackend(userData?: UserSyncRequest): Observable<UserProfile> {
-    const payload: UserSyncRequest = userData || {
-      firstname: this.currentUser()?.firstname || 'Michael',
-      lastname: this.currentUser()?.lastname || 'Anderson',
-      email: this.currentUser()?.email || 'michael.anderson@cbank.int',
+  private toSyncRequest(user: any): UserSyncRequest {
+    return {
+      firstname: user.firstName || '',
+      lastname: user.lastName || '',
+      email: user.primaryEmailAddress?.emailAddress || user.emailAddresses?.[0]?.emailAddress || '',
+      clerk_id: user.id,
     };
-
-    const syncUrl = `${environment.apiUrl}/v1/sync`;
-
-    return this.http.post<UserProfile>(syncUrl, payload).pipe(
-      tap((profile) => {
-        this.currentUser.set(profile);
-        this.isLoaded.set(true);
-      }),
-      catchError(() => {
-        // Fallback for dev / offline demo sync
-        const fallbackRole: 'ADMIN' | 'USER' = payload.email.includes('admin')
-          ? 'ADMIN'
-          : 'USER';
-        const profile: UserProfile = {
-          user_id: payload.clerk_id || 'usr_' + Date.now(),
-          firstname: payload.firstname,
-          lastname: payload.lastname,
-          email: payload.email,
-          role: fallbackRole,
-        };
-        this.currentUser.set(profile);
-        this.isLoaded.set(true);
-        return of(profile);
-      }),
-    );
   }
 
-  /**
-   * Returns current JWT session token for HTTP interceptor.
-   */
+  private clearSession(): void {
+    this.currentUser.set(null);
+    this.currentUser$.next(null);
+    this.sessionToken.set(null);
+    this.isBackendSynced.set(false);
+  }
+
   async getClerkToken(): Promise<string | null> {
-    if (typeof window !== 'undefined' && (window as any).Clerk?.session) {
-      try {
-        const token = await (window as any).Clerk.session.getToken();
-        this.sessionToken.set(token);
-        return token;
-      } catch {
-        return this.sessionToken();
-      }
-    }
     return this.sessionToken();
   }
 
-  /**
-   * Performs login & sync.
-   */
-  login(
-    email: string,
-    rolePreference: 'ADMIN' | 'USER' = 'USER',
-  ): Observable<UserProfile> {
-    const names = email.split('@')[0].split('.');
-    const firstname = names[0]
-      ? names[0].charAt(0).toUpperCase() + names[0].slice(1)
-      : 'User';
-    const lastname = names[1]
-      ? names[1].charAt(0).toUpperCase() + names[1].slice(1)
-      : 'Compliance';
+  syncUserWithBackend(userData?: UserSyncRequest): Observable<UserProfile> {
+    const syncUrl = `${environment.apiUrl}/v1/sync`;
 
-    const req: UserSyncRequest = {
-      firstname,
-      lastname,
-      email,
-    };
-
-    return this.syncUserWithBackend(req).pipe(
+    return this.http.post<UserProfile>(syncUrl, userData || {}).pipe(
       tap((profile) => {
-        if (profile) {
-          profile.role = rolePreference;
-          this.currentUser.set({ ...profile });
-        }
+        this.currentUser.set(profile);
+        this.currentUser$.next(profile);
+        this.isBackendSynced.set(true);
+      }),
+      catchError((err) => {
+        this.currentUser.set(null);
+        this.isBackendSynced.set(false);
+        return throwError(() => err);
       }),
     );
   }
 
-  logout(): void {
-    if (typeof window !== 'undefined' && (window as any).Clerk) {
-      (window as any).Clerk.signOut();
+  login(email: string, password: string): Observable<UserProfile> {
+    return from(this.ensureClerkSession(email, password)).pipe(
+      switchMap(({ user }) => this.syncUserWithBackend(this.toSyncRequest(user))),
+    );
+  }
+
+  private async ensureClerkSession(email: string, password: string): Promise<{ user: any }> {
+    const clerk = await this.waitForClerk();
+    if (!clerk) {
+      throw new Error('Clerk is not ready. Please try again.');
     }
-    this.currentUser.set(null);
-    this.sessionToken.set(null);
+
+    if (clerk.session && clerk.user) {
+      throw new Error('A Clerk session is already active.');
+    }
+
+    if (!clerk.client?.signIn) {
+      throw new Error('Clerk sign-in is unavailable.');
+    }
+
+    try {
+      const signInAttempt = await clerk.client.signIn.create({
+        identifier: email,
+        password,
+      });
+
+      if (signInAttempt.status !== 'complete' || !signInAttempt.createdSessionId) {
+        throw new Error('Authentication was not completed by Clerk.');
+      }
+
+      await clerk.setActive({ session: signInAttempt.createdSessionId });
+      const token = await clerk.session?.getToken();
+      if (!clerk.user || !token) {
+        throw new Error('Clerk did not establish an active session.');
+      }
+      this.sessionToken.set(token);
+      return { user: clerk.user };
+    } catch (error: any) {
+      const clerkError = error?.errors?.[0]?.longMessage || error?.errors?.[0]?.message;
+      throw new Error(clerkError || error?.message || 'Invalid credentials.');
+    }
+  }
+
+  logout(): void {
+    if (typeof window !== 'undefined' && (window as any).Clerk?.signOut) {
+      void (window as any).Clerk.signOut();
+    }
+    this.clearSession();
+    this.isLoaded.set(true);
   }
 }

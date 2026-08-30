@@ -157,6 +157,22 @@ def run_indexing_pipeline(
                 f"[indexing_tasks] Failed to delete chunks for document_id={document_id} after indexing failure: {str(delete_error)}",
                 exc_info=True,
             )
+        # Delte Document from Neo4j graph database
+        try:
+            # Check if chunks were successfully created in memory before the crash
+            if 'chunks' in locals() and chunks:
+                chunk_ids = [c.get("chunk_id") for c in chunks if c.get("chunk_id")]
+                if chunk_ids:
+                    graph_service.delete_by_chunk_ids(chunk_ids)
+            else:
+                logger.warning(
+                    f"[indexing_tasks] No chunk IDs available to perform Neo4j rollback for document_id={document_id}"
+                )
+        except Exception as graph_error:
+            logger.error(
+                f"[indexing_tasks] Failed to rollback graph data for document_id={document_id}: {str(graph_error)}",
+                exc_info=True,
+            )
         # Mark the document as FAILED in database here
         try:
             document_service.update_status(

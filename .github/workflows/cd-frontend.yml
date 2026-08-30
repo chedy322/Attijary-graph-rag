@@ -1,15 +1,30 @@
-# name: CD - Frontend
+name: CD - Backend
 
-# on:
-#   push:
-#     branches:
-#       - main
-#     paths:
-#       - 'frontend/**'
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
 
-# concurrency:
-#   group: cd-frontend-production
-#   cancel-in-progress: true
+concurrency:
+  group: cd-frontend-production
+  cancel-in-progress: true
 
-# jobs:
-#     # cd-frontend:
+jobs:
+    cd-frontend:
+        runs-on: ubuntu-latest
+        environment: production
+        strategy:
+            fail-fast: true
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                fetch-depth: 0
+
+            - name: Echo Frontend Deployment
+              run: echo "Deploying frontend application to production environment"
+             
+    
+           

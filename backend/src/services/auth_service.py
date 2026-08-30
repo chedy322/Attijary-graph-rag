@@ -27,7 +27,7 @@ class AuthService:
                 # User exists, no need to make an expensive network call to Clerk
                 return AuthServiceDTO.map(existing_user)
 
-            # 2. If the user does not exist, they are new to your backend.
+            # 2. If the user does not exist, they are new to  backend.
             user_data = self.clerk_client.get_user(user_id=clerk_user_id)
             if not user_data:
                 raise AppError("User not found in Clerk", 404)

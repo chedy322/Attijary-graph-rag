@@ -2,23 +2,39 @@
 import time
 from typing import List, Optional, Dict, Any
 import logging
+import uuid
 from weaviate.classes.config import Configure, Property, DataType, Tokenization
 from weaviate.classes.query import Filter, MetadataQuery
 from config.vector_db import weaviate_client
 from config.llm import llm_singleton
 from core.exceptions import AppError, VectorStoreError
-
+from google.genai.errors import ClientError
+from config.database import db
+from models.document import Document, DocumentStatus
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 logger = logging.getLogger(__name__)
 
+try:
+    from google.api_core.exceptions import ResourceExhausted
+except ImportError:
+    ResourceExhausted = None
 
+try:
+    from langchain_google_genai._common import GoogleGenerativeAIError
+except ImportError:
+    GoogleGenerativeAIError = Exception
+RETRYABLE_EXCEPTIONS = tuple(
+    exc for exc in (ClientError, ResourceExhausted,GoogleGenerativeAIError) if exc is not None
+)
 class VectorService:
     """Service layer for managing document vector embeddings in Weaviate."""
 
     COLLECTION_NAME = "DocumentChunk"
 
-    def __init__(self, client_singleton=weaviate_client, llm_config=llm_singleton):
+    def __init__(self, client_singleton=weaviate_client, llm_config=llm_singleton,db=db):
         self.client_singleton = client_singleton
         self.llm_config = llm_config
+        self.db = db
         self._schema_initialized = False
 
     def _get_client(self):
@@ -107,6 +123,17 @@ class VectorService:
             raise VectorStoreError(
                 f"Failed to initialize Weaviate schema: {str(e)}"
             ) from e
+    @retry(
+        retry=retry_if_exception_type(RETRYABLE_EXCEPTIONS),
+        wait=wait_exponential(multiplier=2, min=5, max=60),
+        stop=stop_after_attempt(6),
+        before_sleep=lambda retry_state: logger.warning(
+            f"Gemini API rate limit hit (429). Retrying attempt {retry_state.attempt_number} "
+            f"in {retry_state.next_action.sleep:.1f} seconds..."
+        ),
+    )
+    def embed_batch_with_retry(self, embedding_model, batch_texts: List[str]):
+        return embedding_model.embed_documents(batch_texts)
 
     def store_chunks(
         self,
@@ -138,13 +165,14 @@ class VectorService:
                 )
                 embedding_model = self.llm_config.get_embedding_model()
                 texts = [chunk.get("text", "") for chunk in chunks]
-                batch_size = 5
+                batch_size = 50
                 vectors = []
                 for i in range(0, len(texts), batch_size):
                     batch_texts = texts[i : i + batch_size]
-                    batch_vectors = embedding_model.embed_documents(batch_texts)
+                    # batch_vectors = embedding_model.embed_documents(batch_texts)
+                    batch_vectors = self.embed_batch_with_retry(embedding_model, batch_texts)
                     vectors.extend(batch_vectors)
-                    time.sleep(2.0)  # Optional: slight delay to avoid rate limits
+                    time.sleep(4.5)  # Optional: slight delay to avoid rate limits
                 logger.info(f"Generated {len(vectors)} embeddings for the chunks.")
 
             if len(vectors) != len(chunks):
@@ -219,24 +247,41 @@ class VectorService:
                 filters = Filter.by_property("document_id").contains_any(
                     [str(doc_id) for doc_id in document_ids]
                 )
-
+            # Overfetch to ensure we have enough results after filtering out inactive documents
+            overfetch_limit = limit if document_ids else limit * 3
             results = collection.query.hybrid(
                 query=query,
                 vector=query_vector,
                 alpha=alpha,
-                limit=limit,
+                limit=overfetch_limit,
                 filters=filters,
                 return_metadata=MetadataQuery(score=True, explain_score=True),
             )
-
+            if not results.objects:
+                return {"context": "No relevant text passages found.", "sources": [], "graph_context": []}
+            # Filter to only return the chunks that the document ID is active in the DB
+            doc_ids=list({
+            str(obj.properties.get("document_id")) 
+            for obj in results.objects
+              if obj.properties.get("document_id") 
+            })
+            docs = (
+                self.db.session.query(Document)
+                .filter(Document.document_id.in_(doc_ids))
+                .filter(Document.status == DocumentStatus.ACTIVE_COMPLETED)
+                .all()
+            )
+            docs_maps = {str(doc.document_id): doc for doc in docs}
             sources = []
             text_passages = []
 
             for obj in results.objects:
                 props = obj.properties
+                doc_id = str(props.get("document_id"))
+                if doc_id not in docs_maps:
+                    continue  # Skip chunks from inactive documents
                 text = props.get("text", "")
-
-                sources.append(
+                sources.append( 
                     {
                         "document_id": props.get("document_id", "unknown"),
                         "document": props.get("filename", "document.pdf"),
@@ -249,7 +294,7 @@ class VectorService:
                 text_passages.append(
                     f"[Doc: {props.get('title')} | Page {props.get('page_number')}]\nExcerpt: \"{text}\""
                 )
-            # TO ADD : ONLY RETURN THE CHUNKS THAT THE DOCUMENT ID IS ACTIVE IN THE DB
+            # TO ADD :  Rreanker model
             context_text = "### RETRIEVED TEXT PASSAGES\n" + "\n\n".join(text_passages)
 
             return {"context": context_text, "sources": sources, "graph_context": []}

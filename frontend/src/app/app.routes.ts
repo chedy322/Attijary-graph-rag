@@ -5,20 +5,17 @@ import { ChatInterfaceComponent } from './features/chat-interface/chat-interface
 import { DocumentVerificationComponent } from './features/document-verification/document-verification.component';
 import { GraphExplorerComponent } from './features/graph-explorer/graph-explorer.component';
 import { authGuard } from './core/guards/auth.guard';
-import { roleGuard } from './core/guards/role.guard';
+import { adminRoleGuard } from './core/guards/admin-role.guard';
 
 export const routes: Routes = [
-  { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+  { path: '', redirectTo: 'chat', pathMatch: 'full' },
   { path: 'auth', component: AuthComponent },
-  {
-    path: 'dashboard',
-    component: AdminDashboardComponent,
-    canActivate: [authGuard, roleGuard],
-  },
+  { path: 'sign-in', component: AuthComponent },
+  { path: 'login', redirectTo: 'sign-in', pathMatch: 'full' },
   {
     path: 'documents',
     component: AdminDashboardComponent,
-    canActivate: [authGuard, roleGuard],
+    canActivate: [authGuard, adminRoleGuard],
   },
   { path: 'chat', component: ChatInterfaceComponent, canActivate: [authGuard] },
   {
@@ -36,5 +33,10 @@ export const routes: Routes = [
     component: GraphExplorerComponent,
     canActivate: [authGuard],
   },
-  { path: '**', redirectTo: 'dashboard' },
+  {
+    path: 'graph/:documentId',
+    component: GraphExplorerComponent,
+    canActivate: [authGuard],
+  },
+  { path: '**', redirectTo: 'chat' },
 ];

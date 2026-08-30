@@ -1,6 +1,7 @@
 from collections import defaultdict
 from html import entities
 import logging
+import time
 from typing import List, Dict, Any, Tuple
 import concurrent
 from config.llm import llm_singleton
@@ -12,6 +13,23 @@ from services.vector_service import VectorService
 import networkx as nx
 import numpy as np
 import logging
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from google.genai.errors import ClientError
+
+# Catch LangChain's specific Google wrapper exceptions
+try:
+    from langchain_google_genai._common import GoogleGenerativeAIError
+except ImportError:
+    GoogleGenerativeAIError = Exception
+
+try:
+    from google.api_core.exceptions import ResourceExhausted
+except ImportError:
+    ResourceExhausted = None
+
+RETRYABLE_EXCEPTIONS = tuple(
+    exc for exc in (ClientError, ResourceExhausted, GoogleGenerativeAIError) if exc is not None
+)
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +75,15 @@ class GraphService:
     # def get_graph_data(self, query):
     #     # Implement the logic to fetch data from the graph database using the graph_client
     #     return self.graph_client.execute_query(query)
+    @retry(
+        retry=retry_if_exception_type(RETRYABLE_EXCEPTIONS),
+        wait=wait_exponential(multiplier=2, min=5, max=60),
+        stop=stop_after_attempt(5),
+        before_sleep=lambda retry_state: logger.warning(
+            f"[graph_service] Gemini API rate limit hit. Retrying attempt {retry_state.attempt_number} "
+            f"in {retry_state.next_action.sleep:.1f} seconds..."
+        ),
+    )
     def extract_entities_and_relationships(
         self, chunk: Dict[str, Any]
     ) -> List[Dict[str, Any]]:
@@ -99,24 +126,20 @@ class GraphService:
             ]
         )
 
-        try:
-            chain = prompt | self.structured_llm
+        chain = prompt | self.structured_llm
 
-            # Execute and get a type-safe Pydantic object back automatically
-            response: ExtractionResponse = chain.invoke({"text": text_content})
+        # Execute and get a type-safe Pydantic object back automatically
+        response: ExtractionResponse = chain.invoke({"text": text_content})
 
-            results = []
-            for t in response.triplets:
-                item = t.model_dump()
-                item["chunk_id"] = chunk.get("chunk_id", "unknown")
-                results.append(item)
-            logger.info(
-                f"[graph_service] Extracted {len(results)} triplets for chunk_id={chunk.get('chunk_id', 'unknown')}"
-            )
-            return results
-
-        except Exception as e:
-            raise Exception(f"Error in LLM processing: {str(e)}")
+        results = []
+        for t in response.triplets:
+            item = t.model_dump()
+            item["chunk_id"] = chunk.get("chunk_id", "unknown")
+            results.append(item)
+        logger.info(
+            f"[graph_service] Extracted {len(results)} triplets for chunk_id={chunk.get('chunk_id', 'unknown')}"
+        )
+        return results
 
     def remove_duplicates(
         self, extracted_data: List[Dict[str, Any]]
@@ -308,62 +331,70 @@ class GraphService:
             return
 
         logger.info("Storing Community nodes in Neo4j...")
-        community_data = [
-            {"id": cid, "summary": summary}
-            for cid, summary in community_summaries.items()
-        ]
+        
+        # Extract clean string summaries to satisfy Neo4j primitive type requirement
+        community_data = []
+        for cid, summary in community_summaries.items():
+            if isinstance(summary, dict):
+                clean_summary = summary.get("text") or str(summary)
+            elif hasattr(summary, "text"):
+                clean_summary = summary.text
+            else:
+                clean_summary = str(summary) if summary is not None else ""
+                
+            community_data.append({"id": cid, "summary": clean_summary})
 
         community_query = """
         UNWIND $communities AS c
         MERGE (com:Community {id: c.id})
         SET com.summary = c.summary
         """
+        
+        # Extract the chunk_ids
+        chunks_ids = list(set([t.get("chunk_id") for t in triplets if t.get("chunk_id")]))
+        
         try:
-            self.graph.query(community_query, {"communities": community_data})
+            self.graph.execute_query(community_query, {"communities": community_data})
+
+            logger.info("Storing Entities and Relationships in Neo4j...")
+
+            # Group triplets by relationship type to construct valid Cypher queries
+            grouped_by_rel = defaultdict(list)
+            for t in triplets:
+                grouped_by_rel[t["relation"]].append(t)
+
+            for rel_type, rel_triplets in grouped_by_rel.items():
+                # Dynamically set the relationship label in Cypher
+                entity_rel_query = f"""
+                UNWIND $triplets AS t
+
+                // 1. Merge Subject Node
+                MERGE (s:Entity {{name: t.subject}})
+                ON CREATE SET s.type = t.subject_type
+
+                // 2. Merge Object Node
+                MERGE (o:Entity {{name: t.object}})
+                ON CREATE SET o.type = t.object_type
+
+                // 3. Link Subject to its Community
+                WITH s, o, t
+                MATCH (c:Community {{id: t.community_id}})
+                MERGE (s)-[:IN_COMMUNITY]->(c)
+
+                // 4. Create/Merge Relationship between Subject and Object
+                MERGE (s)-[r:{rel_type}]->(o)
+                ON CREATE SET r.chunk_id = t.chunk_id
+                """
+
+                self.graph.execute_query(entity_rel_query, {"triplets": rel_triplets})
+
+            logger.info("Successfully stored all Graph RAG data in Neo4j!")
         except Exception as e:
-            logger.error(
-                f"[graph_service] Error storing community data in Neo4j: {str(e)}"
-            )
-            return
+            logger.error(f"[graph_service] Error storing data in Neo4j. Triggering rollback. Error: {str(e)}")
+            if chunks_ids:
+                self.delete_by_chunk_ids(chunks_ids)
+            raise e 
 
-        logger.info("Storing Entities and Relationships in Neo4j...")
-
-        # Group triplets by relationship type to construct valid Cypher queries
-        grouped_by_rel = defaultdict(list)
-        for t in triplets:
-            grouped_by_rel[t["relation"]].append(t)
-
-        for rel_type, rel_triplets in grouped_by_rel.items():
-            # Dynamically set the relationship label in Cypher
-            entity_rel_query = f"""
-            UNWIND $triplets AS t
-
-            // 1. Merge Subject Node
-            MERGE (s:Entity {{name: t.subject}})
-            ON CREATE SET s.type = t.subject_type
-
-            // 2. Merge Object Node
-            MERGE (o:Entity {{name: t.object}})
-            ON CREATE SET o.type = t.object_type
-
-            // 3. Link Subject to its Community
-            WITH s, o, t
-            MATCH (c:Community {{id: t.community_id}})
-            MERGE (s)-[:IN_COMMUNITY]->(c)
-
-            // 4. Create/Merge Relationship between Subject and Object
-            MERGE (s)-[r:{rel_type}]->(o)
-            ON CREATE SET r.chunk_id = t.chunk_id
-            """
-            try:
-                self.graph.query(entity_rel_query, {"triplets": rel_triplets})
-            except Exception as e:
-                logger.error(
-                    f"[graph_service] Error storing triplets with relationship '{rel_type}' in Neo4j: {str(e)}"
-                )
-                continue  # Continue with the next relationship type
-
-        logger.info("Successfully stored all Graph RAG data in Neo4j!")
 
     def index_graph_pipeline(self, chunks: List[Dict[str, Any]]):
         """
@@ -375,22 +406,39 @@ class GraphService:
 
         # 1. Extract entities and relationships from the provided chunks using an LLM
         # Send chunk in batches
+        # all_results = []
+        # with ThreadPoolExecutor(max_workers=5) as executor:
+        #     future_to_chunk = {
+        #         executor.submit(self.extract_entities_and_relationships, chunk)
+        #         for chunk in chunks
+        #     }
+        #     for future in concurrent.futures.as_completed(future_to_chunk):
+        #         chunk = future_to_chunk[future]
+        #         try:
+        #             chunk_results = future.result()
+        #             all_results.extend(chunk_results)
+        #         except Exception as e:
+        #             logger.error(
+        #                 f"[graph_service] Error processing chunk with chunk {chunk.get('id', 'unknown')}: {str(e)}",
+        #                 exc_info=True,
+        #   
+        #           )
         all_results = []
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            future_to_chunk = {
-                executor.submit(self.extract_entities_and_relationships, chunk)
-                for chunk in chunks
-            }
-            for future in concurrent.futures.as_completed(future_to_chunk):
-                chunk = future_to_chunk[future]
-                try:
-                    chunk_results = future.result()
-                    all_results.extend(chunk_results)
-                except Exception as e:
-                    logger.error(
-                        f"[graph_service] Error processing chunk with chunk {chunk.get('id', 'unknown')}: {str(e)}",
-                        exc_info=True,
-                    )
+        for i, chunk in enumerate(chunks):
+            try:
+                chunk_results = self.extract_entities_and_relationships(chunk)
+                all_results.extend(chunk_results)
+                
+                # Sleep between requests to prevent hitting the RPM limit
+                if i < len(chunks) - 1:
+                    logger.info(f"Pausing for 5 seconds to respect Gemini API rate limits...")
+                    time.sleep(5.0) 
+                    
+            except Exception as e:
+                logger.error(
+                    f"[graph_service] Error processing chunk with chunk {chunk.get('chunk_id', 'unknown')}: {str(e)}",
+                    exc_info=True,
+                )
 
         # 2. Remove duplicates using vector_similarity
         all_results = self.remove_duplicates(all_results)
@@ -429,13 +477,13 @@ class GraphService:
             startNode(rel).name AS source,
             type(rel) AS relation,
             endNode(rel).name AS target,
-            coalesce(rel.chunk_ids, [rel.chunk_id]) AS chunk_ids
+            coalesce(rel.chunk_id, [rel.chunk_id]) AS chunk_ids
         LIMIT 30
         """
 
         try:
-            results = self.graph.query(cypher_query, {"entities": entities})
-            if not results:
+            records, summary, keys = self.graph.execute_query(cypher_query, {"entities": entities})
+            if not records:
                 return {
                     "context": "No graph context found.",
                     "sources": [],
@@ -444,14 +492,19 @@ class GraphService:
 
             graph_context = []
             all_chunk_ids = set()
-
-            for r in results:
+            print("Records fetched ",records)
+            for r in records:
                 source = r["source"]
                 relation = r["relation"]
                 target = r["target"]
-                chunk_ids = r.get("chunk_ids") or []
-
-                all_chunk_ids.update(chunk_ids)
+                raw_chunk_ids = r.get("chunk_ids") 
+                if raw_chunk_ids:
+                    if isinstance(raw_chunk_ids, str):
+                        all_chunk_ids.add(raw_chunk_ids)
+                    elif isinstance(raw_chunk_ids, (list, tuple, set)):
+                        for cid in raw_chunk_ids:
+                            if cid:
+                                all_chunk_ids.add(str(cid))
 
                 # Build structured graph context item
                 graph_context.append(
@@ -464,7 +517,9 @@ class GraphService:
                 )
 
             # Query Weaviate using collected chunk IDs
-            weaviate_chunks = vector_service.get_chunks_by_ids(list(all_chunk_ids))
+            weaviate_chunks= {}
+            if all_chunk_ids:
+                weaviate_chunks = vector_service.get_chunks_by_ids(list(all_chunk_ids))
 
             sources = []
             text_passages = []
@@ -512,7 +567,7 @@ class GraphService:
         """
 
         try:
-            records = self.graph.query(cypher_query)
+            records,summary,keys= self.graph.execute_query(cypher_query)
         except Exception as e:
             logger.error(f"[graph_service] Error fetching communities: {str(e)}")
             raise Exception(f"Error fetching communities: {str(e)}")
@@ -528,17 +583,17 @@ class GraphService:
         graph_context = []
         for record in records:
             comm_id = str(record.get("community_id"))
-            summary = record.get("summary", "")
+            summary_com = record.get("summary", "")
             graph_context.append(
                 {
                     "source_node": f"Community_{comm_id}",
                     "relationship": "SUMMARIZES_CLUSTER",
                     "target_node": f"Topic Cluster {comm_id}",
-                    "graph_path": f"(Community_{comm_id})-[SUMMARIZES_CLUSTER]->({summary[:80]}...)",
+                    "graph_path": f"(Community_{comm_id})-[SUMMARIZES_CLUSTER]->({summary_com[:80]}...)",
                 }
             )
             context_parts.append(
-                f"--- Community {record['community_id']} ---\n{record['summary']}"
+                f"--- Community {record['community_id']} ---\n{summary_com}"
             )
 
         context_text = "\n\n".join(context_parts)
@@ -549,5 +604,33 @@ class GraphService:
             "sources": [],
         }
 
+    def delete_by_chunk_ids(self, chunk_ids: List[str]):
+        """
+        Rollback helper: Deletes all relationships associated with the given chunk IDs,
+        and subsequently cleans up any Entity nodes that are left orphaned.
+        """
+        if not chunk_ids:
+            return
+            
+        logger.info(f"[graph_service] Rolling back graph data for {len(chunk_ids)} chunk IDs...")
+        
+        rollback_query = """
+        // 1. Find and delete relationships with these chunk_ids
+        MATCH ()-[r]-()
+        WHERE r.chunk_id IN $chunk_ids
+        DELETE r
+        
+        // 2. Delete orphaned Entity nodes (nodes with no relationships left)
+        WITH 1 AS dummy
+        MATCH (n:Entity)
+        WHERE count {(n)--()} = 0
+        DELETE n
+        """
+        
+        try:
+            self.graph.execute_query(rollback_query, {"chunk_ids": chunk_ids})
+            logger.info("[graph_service] Successfully rolled back graph data.")
+        except Exception as e:
+            logger.error(f"[graph_service] Error during graph rollback: {str(e)}")
 
 graph_service = GraphService()

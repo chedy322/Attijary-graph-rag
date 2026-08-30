@@ -1,10 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   AgentQueryRequest,
   AgentQueryResponse,
+  Chat,
   ChatListResponse,
   ChatMessagesResponse,
   DeleteChatResponse,
@@ -29,7 +30,9 @@ export class AgentService {
    * Fetches all chat sessions/threads created by the authenticated user.
    */
   getChats(): Observable<ChatListResponse> {
-    return this.http.get<ChatListResponse>(`${this.baseUrl}/chats`);
+    return this.http.get<Chat[]>(`${this.baseUrl}/chats`).pipe(
+      map((chats) => ({ chats })),
+    );
   }
 
   /**

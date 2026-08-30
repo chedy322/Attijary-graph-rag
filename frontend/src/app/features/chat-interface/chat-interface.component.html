@@ -1,4 +1,10 @@
 <div class="chat-container">
+  @if (errorMessage) {
+    <div class="error-banner" role="alert">
+      {{ errorMessage }}
+      <button type="button" (click)="errorMessage = null" aria-label="Dismiss error">&times;</button>
+    </div>
+  }
   <!-- Left Sub-Sidebar: Chat Sessions List -->
   <div class="chat-sessions-sidebar">
     <div class="sessions-header">
@@ -40,7 +46,7 @@
             <span class="session-title">{{ chat.title }}</span>
             <span class="session-time">{{ chat.created_at }}</span>
           </div>
-          <button class="more-btn">&hellip;</button>
+          <button class="more-btn" (click)="deleteChat(chat.chat_id, $event)" title="Delete chat">&times;</button>
         </div>
       }
     </div>
@@ -127,7 +133,7 @@
 
                   <!-- Visual Node Diagram -->
                   <div class="graph-nodes-diagram">
-                    @for (ctx of msg.rag_source?.graph_context; track ctx.source_node) {
+                    @for (ctx of msg.rag_source?.graph_context; track $index) {
                       <div class="node-card source-node">
                         <div class="node-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div>
                         <div class="node-info">
@@ -164,8 +170,8 @@
                   </div>
 
                   <div class="sources-grid">
-                    @for (src of msg.rag_source?.sources; track src.document || src.title) {
-                      <a [routerLink]="['/verification', src.document_id || 'cb-circ-2026-05']" class="source-card">
+                    @for (src of msg.rag_source?.sources; track src.document_id) {
+                      <a [routerLink]="['/verification', src.document_id]" class="source-card">
                         <div class="pdf-tag">PDF</div>
                         <div class="source-info">
                           <span class="source-name">{{ src.document || src.title }}</span>

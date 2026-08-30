@@ -1,29 +1,29 @@
-# Run on every pull request on every branch
+# Run on every pull request targeting main when files in backend change
 on:
   pull_request:
-      branches:
-        - main
-      paths:
-        - 'backend/**'
+    branches:
+      - main
+    paths:
+      - 'backend/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-# Run ,depandabot bot,secret scanning ,unit test ,Intergration test,security test
-jobs:
 
+jobs:
   # Run secret scanning
   secret-scanning:
     uses: ./.github/workflows/reusable-secret-scanning.yml
     secrets:
       GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  # Run dependecy scanning
+
+  # Run dependency scanning
   dependency-scanning:
     uses: ./.github/workflows/reusable-dependency-scanning.yml
 
   # Run Security test
   codeql-analysis:
-    uses: ./.github/workflows/reusable-codeql-analysis.yml
+    uses: ./.github/workflows/reusable-codeQl-scanning.yml
     with:
       languages: 'python'

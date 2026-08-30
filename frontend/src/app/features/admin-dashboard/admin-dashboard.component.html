@@ -1,15 +1,27 @@
 <div class="dashboard-page">
+  <!-- Floating Error Notification Banner (Toast) -->
+  @if (errorMessage) {
+    <div class="floating-toast-error">
+      <div class="toast-content">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span>{{ errorMessage }}</span>
+      </div>
+      <button class="toast-close" (click)="clearError()">&times;</button>
+    </div>
+  }
+
   <!-- Top Header Bar -->
   <header class="page-header">
     <div class="header-left">
-      <h1>Ingestion Pipeline</h1>
-      <p>Monitor and manage document ingestion from multiple sources.</p>
+      <h1>Documents</h1>
+      <p>Manage regulatory documents from multiple sources.</p>
     </div>
-    <div class="header-actions">
+    @if (authService.isAdmin()) {
+      <div class="header-actions">
       @if (scraperMessage) {
         <span class="sync-banner">{{ scraperMessage }}</span>
       }
-      <button class="btn btn-secondary" (click)="triggerSyncScraper()">
+      <button class="btn btn-secondary" (click)="triggerSyncScraper()" [disabled]="isLoading">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6"/><path d="M2 11.5a10 10 0 0 1 18.8-4.3L21.5 8M22 12.5a10 10 0 0 1-18.8 4.2L2.5 16"/></svg>
         Sync Scraper
       </button>
@@ -17,7 +29,8 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         Upload Document
       </button>
-    </div>
+      </div>
+    }
   </header>
 
   <!-- Metric Cards Grid -->
@@ -30,11 +43,9 @@
         <span class="metric-label">Total Indexed Documents</span>
         <div class="metric-value-row">
           <span class="metric-value">{{ totalIndexed | number }}</span>
-          <span class="metric-badge green">+8.4%</span>
         </div>
-        <span class="metric-sub">+972 this week</span>
+        <span class="metric-sub">Synced from backend</span>
       </div>
-      <div class="sparkline blue-sparkline"></div>
     </div>
 
     <div class="metric-card">
@@ -42,13 +53,12 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
       </div>
       <div class="metric-body">
-        <span class="metric-label">Active Web Scraper Syncs</span>
+        <span class="metric-label">Active Scraper / ETL Pipelines</span>
         <div class="metric-value-row">
           <span class="metric-value">{{ activeScraperSyncs }}</span>
         </div>
-        <span class="metric-sub">2 running now</span>
+        <span class="metric-sub">Processing state</span>
       </div>
-      <div class="sparkline green-sparkline"></div>
     </div>
 
     <div class="metric-card">
@@ -62,7 +72,6 @@
         </div>
         <span class="metric-sub text-danger">Requires attention</span>
       </div>
-      <div class="sparkline red-sparkline"></div>
     </div>
   </div>
 
@@ -89,112 +98,116 @@
 
         <select [(ngModel)]="selectedStatus" (change)="applyFilters()">
           <option value="ALL">All Statuses</option>
-          <option value="COMPLETED">Completed</option>
+          <option value="ACTIVE/COMPLETED">ACTIVE/COMPLETED</option>
           <option value="PROCESSING">Processing</option>
           <option value="FAILED">Failed</option>
           <option value="PENDING_UPLOAD">Pending</option>
         </select>
 
-        <div class="date-picker-mock">
-          <span>May 8 – May 15, 2026</span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        </div>
+        <button class="btn btn-secondary" (click)="loadDocuments()" [disabled]="isLoading">
+          Refresh
+        </button>
       </div>
     </div>
 
+    <!-- Loading Indicator -->
+    @if (isLoading) {
+      <div class="loading-container">
+        <div class="spinner-icon"></div>
+        <span>Fetching documents from backend API...</span>
+      </div>
+    }
+
     <!-- Data Table -->
-    <div class="table-responsive">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Document Title</th>
-            <th>Circular Number</th>
-            <th>Upload Date</th>
-            <th>Origin</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (doc of filteredDocuments; track doc.document_id) {
+    @if (!isLoading) {
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
             <tr>
-              <!-- Title & Category -->
-              <td class="col-title">
-                <div class="doc-cell">
-                  <div class="file-icon" [class.scraped]="doc.origin === 'SCRAPED'">
-                    @if (doc.origin === 'SCRAPED') {
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
-                    } @else {
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+              <th>Document Title</th>
+              <th>Circular Number</th>
+              <th>Upload Date</th>
+              <th>Origin</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (doc of filteredDocuments; track doc.document_id) {
+              <tr>
+                <td class="col-title">
+                  <div class="doc-cell">
+                    <div class="file-icon" [class.scraped]="doc.origin === 'SCRAPED'">
+                      @if (doc.origin === 'SCRAPED') {
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+                      } @else {
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+                      }
+                    </div>
+                    <div class="doc-meta">
+                      <span class="doc-title">{{ doc.title }}</span>
+                      <span class="doc-dept">{{ doc.category || 'General Department' }}</span>
+                    </div>
+                  </div>
+                </td>
+
+                <td class="col-number">
+                  <span class="code-text">{{ doc.number || 'N/A' }}</span>
+                </td>
+
+                <td class="col-date">{{ doc.date }}</td>
+
+                <td class="col-origin">
+                  <span class="tag-badge" [class.scraped-tag]="doc.origin === 'SCRAPED'" [class.manual-tag]="doc.origin === 'MANUAL'">
+                    {{ doc.origin === 'SCRAPED' ? 'Scraped' : 'Manual' }}
+                  </span>
+                </td>
+
+                <td class="col-status">
+                  <span class="status-pill" [ngClass]="doc.status.toLowerCase().replace('/', '-')">
+                    <span class="dot"></span>
+                    {{ doc.status }}
+                  </span>
+                </td>
+
+                <td class="col-actions">
+                  <div class="action-buttons">
+                    <a [routerLink]="['/verification', doc.document_id]" class="icon-btn" title="View Document & Verification">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </a>
+                    @if (authService.isAdmin()) {
+                      <button
+                        class="icon-btn"
+                        (click)="reindexDoc(doc.document_id)"
+                        title="Trigger Index"
+                        aria-label="Trigger Index"
+                        [disabled]="!canTriggerIndex(doc.status)"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v7c0 1.66 3.58 3 8 3s8-1.34 8-3V5"/><path d="M4 12v7c0 1.66 3.58 3 8 3 1.78 0 3.4-.25 4.78-.67"/></svg>
+                      </button>
+                      <button class="icon-btn danger" (click)="deleteDoc(doc.document_id)" title="Delete Document">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                      </button>
                     }
                   </div>
-                  <div class="doc-meta">
-                    <span class="doc-title">{{ doc.title }}</span>
-                    <span class="doc-dept">{{ doc.category || 'General Department' }}</span>
-                  </div>
-                </div>
-              </td>
-
-              <!-- Number -->
-              <td class="col-number">
-                <span class="code-text">{{ doc.number || 'N/A' }}</span>
-              </td>
-
-              <!-- Date -->
-              <td class="col-date">{{ doc.date }}</td>
-
-              <!-- Origin Tag -->
-              <td class="col-origin">
-                <span class="tag-badge" [class.scraped-tag]="doc.origin === 'SCRAPED'" [class.manual-tag]="doc.origin === 'MANUAL'">
-                  {{ doc.origin === 'SCRAPED' ? 'Scraped' : 'Manual' }}
-                </span>
-              </td>
-
-              <!-- Status Pill -->
-              <td class="col-status">
-                <span class="status-pill" [ngClass]="doc.status.toLowerCase()">
-                  <span class="dot"></span>
-                  {{ doc.status }}
-                </span>
-              </td>
-
-              <!-- Actions -->
-              <td class="col-actions">
-                <div class="action-buttons">
-                  <a [routerLink]="['/verification', doc.document_id]" class="icon-btn" title="View Document & Verification">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                  </a>
-                  <button class="icon-btn" (click)="reindexDoc(doc.document_id)" title="Trigger Re-Indexing">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6"/><path d="M2 11.5a10 10 0 0 1 18.8-4.3L21.5 8M22 12.5a10 10 0 0 1-18.8 4.2L2.5 16"/></svg>
-                  </button>
-                  <button class="icon-btn danger" (click)="deleteDoc(doc.document_id)" title="Delete Document">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
+                </td>
+              </tr>
+            }
+            @if (filteredDocuments.length === 0) {
+              <tr>
+                <td colspan="6" class="empty-state">
+                  No documents found. Connect backend API or upload a new regulatory document.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
 
     <!-- Pagination Footer -->
     <div class="pagination">
-      <span class="page-info">Showing 1 to {{ filteredDocuments.length }} of {{ totalDocuments }} documents</span>
-      <div class="page-controls">
-        <select class="per-page-select">
-          <option>10 per page</option>
-          <option>25 per page</option>
-        </select>
-
-        <div class="btn-group">
-          <button class="page-btn disabled">&laquo;</button>
-          <button class="page-btn active">1</button>
-          <button class="page-btn">2</button>
-          <button class="page-btn">3</button>
-          <button class="page-btn">&raquo;</button>
-        </div>
-      </div>
+      <span class="page-info">Showing {{ filteredDocuments.length }} of {{ totalDocuments }} documents</span>
     </div>
   </div>
 </div>
@@ -224,6 +237,10 @@
             <label>Category / Department</label>
             <input type="text" [(ngModel)]="newDocCategory" placeholder="e.g. Monetary Policy" />
           </div>
+        </div>
+        <div class="form-group">
+          <label>Document Date</label>
+          <input type="date" [(ngModel)]="newDocDate" required />
         </div>
 
         <div class="form-group">

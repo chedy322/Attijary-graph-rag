@@ -21,6 +21,7 @@ email-validator
 langchain
 langgraph
 langchain-google-genai
+langchain-classic
 openai
 
 # Cloud Storage
