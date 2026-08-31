@@ -135,5 +135,22 @@ class DocumentService:
             db.session.rollback()
             raise AppError(f"Failed to update document status: {str(e)}", 500) from e
 
+    def delete_document(self, document_id) -> None:
+        """Delete a document by its UUID primary key."""
+        try:
+            document = self.get_document_by_id(document_id)
+            if not document:
+                raise AppError("Document not found", 404)
+
+            db.session.delete(document)
+            db.session.commit()
+
+        except AppError:
+            db.session.rollback()
+            raise
+        except Exception as e:
+            db.session.rollback()
+            raise AppError(f"Failed to delete document: {str(e)}", 500) from e
+
 
 document_service = DocumentService()

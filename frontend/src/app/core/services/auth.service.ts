@@ -89,7 +89,9 @@ export class AuthService {
     }
 
     try {
-      const token = await session.getToken();
+      const token = await session.getToken({
+        template: 'graph-rag-jwt', 
+      });
       if (!token) {
         throw new Error('Clerk session did not provide a token.');
       }
@@ -120,7 +122,12 @@ export class AuthService {
   }
 
   async getClerkToken(): Promise<string | null> {
-    return this.sessionToken();
+    // return this.sessionToken();
+    const clerk = (window as any).Clerk;
+  if (!clerk?.session) return null;
+  
+  // Fetch fresh JWT dynamically using your template name
+  return await clerk.session.getToken({ template: 'graph-rag-jwt' });
   }
 
   syncUserWithBackend(userData?: UserSyncRequest): Observable<UserProfile> {
@@ -171,7 +178,9 @@ export class AuthService {
       }
 
       await clerk.setActive({ session: signInAttempt.createdSessionId });
-      const token = await clerk.session?.getToken();
+      const token = await clerk.session?.getToken({
+        template: 'graph-rag-jwt',
+      });
       if (!clerk.user || !token) {
         throw new Error('Clerk did not establish an active session.');
       }

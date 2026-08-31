@@ -80,5 +80,32 @@ class StorageService:
         except Exception as e:
             raise AppError(f"Failed to generate SAS URL: {str(e)}", 500) from e
 
+    # Delete a document from Azure Blob Storage
+    def delete_document(self, file_url: str) -> None:
+        """
+        Delete a document from Azure Blob Storage.
+
+        Args:
+            file_url: The blob path inside the container, e.g. 'documents/<uuid>.pdf'
+        """
+        try:
+            blob_client = self.containerClient.get_blob_client(blob=file_url)
+            blob_client.delete_blob()
+        except Exception as e:
+            raise AppError(f"Failed to delete document: {str(e)}", 500) from e
+
+    def restore_deleted_document(self, file_url: str) -> None:
+        """
+        Restore a deleted document from Azure Blob Storage.
+
+        Args:
+            file_url: The blob path inside the container, e.g. 'documents/<uuid>.pdf'
+        """
+        try:
+            blob_client = self.containerClient.get_blob_client(blob=file_url)
+            blob_client.undelete_blob()
+        except Exception as e:
+            raise AppError(f"Failed to restore document: {str(e)}", 500) from e
+
 
 storage_service = StorageService()

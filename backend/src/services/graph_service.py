@@ -633,4 +633,6 @@ class GraphService:
         except Exception as e:
             logger.error(f"[graph_service] Error during graph rollback: {str(e)}")
 
+    # Delete all nodes and relationships in the graph database (use with caution) form a given document_id
+
 graph_service = GraphService()

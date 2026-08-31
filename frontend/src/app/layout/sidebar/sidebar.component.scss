@@ -34,6 +34,74 @@
     .collapse-btn {
       justify-content: center;
     }
+
+    .sign-out-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      background: rgba(239, 68, 68, 0.1);
+      border: none;
+      color: #ef4444;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 6px;
+
+      &.icon-only {
+        justify-content: center;
+      }
+
+      &:hover {
+        background: rgba(239, 68, 68, 0.2);
+      }
+    }
+  }
+
+  @media (max-width: 767px) {
+    .sidebar {
+      width: 68px;
+      flex-basis: 68px;
+
+      .brand {
+        padding: 16px 0;
+        justify-content: center;
+      }
+
+      .brand-text,
+      .nav-label,
+      .user-info,
+      .collapse-btn span,
+      .sign-out-btn span,
+      .section-label {
+        display: none;
+      }
+
+      .nav-menu {
+        padding: 0 8px;
+      }
+
+      .nav-item {
+        justify-content: center;
+        padding: 10px 0;
+      }
+
+      .sidebar-footer {
+        padding: 10px 8px;
+
+        .user-profile {
+          justify-content: center;
+        }
+
+        .sign-out-btn,
+        .collapse-btn {
+          justify-content: center;
+          padding: 8px 4px;
+        }
+      }
+    }
   }
 }
 

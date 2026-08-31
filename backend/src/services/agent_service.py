@@ -338,5 +338,33 @@ class AgentService:
             ],
         }
 
+    def delete_chat(self, clerk_user_id: str, chat_id: str) -> Dict[str, Any]:
+        """Delete a specific chat session and its associated conversations."""
+        user = self._get_user(clerk_user_id)
+        try:
+            chat_uuid = uuid.UUID(chat_id)
+        except ValueError:
+            raise Exception("Invalid chat_id format", 400)
+        try:
+            chat = (
+                db.session.query(Chat)
+                .filter_by(chat_id=chat_uuid, user_id=user.user_id)
+                .first()
+            )
+            if not chat:
+                raise Exception("Chat session not found", 404)
+
+            # Delete associated conversations first due to foreign key constraints
+            db.session.query(Conversation).filter_by(chat_id=chat.chat_id).delete()
+            db.session.delete(chat)
+            db.session.commit()
+            return {"message": "Chat session and its conversations deleted successfully."}
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error deleting chat session: {str(e)}")
+            raise Exception("Failed to delete chat session", 500)
+
+    
+    
 
 agent_service = AgentService()

@@ -10,7 +10,7 @@ from config.celery_app import celery_client
 from core.exceptions import register_error_handlers
 from core.middleware import require_auth, admin_required
 import logging
-load_dotenv()
+load_dotenv(override=True)
 logger = logging.getLogger(__name__)
  
 def create_app() -> Flask:

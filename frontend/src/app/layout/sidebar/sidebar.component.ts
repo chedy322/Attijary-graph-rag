@@ -1,6 +1,7 @@
 import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { Router } from '@angular/router';
 import { UserRole } from '../../core/models';
 import { AuthService } from '../../core/services';
 
@@ -21,6 +22,7 @@ interface MenuItem {
 })
 export class SidebarComponent {
   protected authService = inject(AuthService);
+  private router = inject(Router);
 
   @Input() userRole: UserRole | null = null;
   @Input() isCollapsed = false;
@@ -61,5 +63,10 @@ export class SidebarComponent {
   onToggleCollapse(): void {
     this.isCollapsed = !this.isCollapsed;
     this.toggleCollapse.emit();
+  }
+
+  onSignOut(): void {
+    this.authService.logout();
+    void this.router.navigate(['/sign-in']);
   }
 }

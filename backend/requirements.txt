@@ -44,3 +44,9 @@ pypdf
 pdf2image
 
 networkx
+
+
+numpy
+matplotlib
+python-json-logger
+tiktoken 

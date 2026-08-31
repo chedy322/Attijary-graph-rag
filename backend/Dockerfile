@@ -20,6 +20,7 @@ FROM python:3.12-slim AS final
 WORKDIR /app
 
 # 1. FIX POPPLER ERROR: Install poppler-utils in the final container
+# 1. Install system libraries via apt-get
 RUN apt-get update && apt-get install -y --no-install-recommends \
     poppler-utils \
     tesseract-ocr \
@@ -27,7 +28,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libmagic1 \
     libgl1 \
     libglib2.0-0 \
-    && rm -rf /var/lib/apt-get/lists/*
+    && rm -rf /var/lib/apt/lists/*
+
+
 
 # Create non-root user
 RUN addgroup --system appgroup && adduser --system --group appuser
