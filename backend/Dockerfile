@@ -12,9 +12,14 @@ ENV PATH="/venv/bin:$PATH"
 # Install Python packages into /venv with uv cache
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=requirements.txt,target=requirements.txt \
-    uv pip install --compile-bytecode -r requirements.txt
+    uv pip install -r requirements.txt
 
+RUN find /venv -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true \
+ && find /venv -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true \
+ && find /venv -type d -name "test" -exec rm -rf {} + 2>/dev/null || true \
+ && find /venv -name "*.pyc" -delete
 
+ 
 # Stage 2: Final runtime stage
 FROM python:3.12-slim AS final
 WORKDIR /app

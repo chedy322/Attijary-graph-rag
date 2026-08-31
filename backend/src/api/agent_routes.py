@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, g
-from core.middleware import require_auth
+from core.middleware import require_auth, admin_required
 from core.exceptions import AppError
 from services.agent_service import agent_service
 
@@ -60,6 +60,7 @@ def delete_chat(chat_id):
     DELETE /api/v1/agent/chats/<chat_id>
     Deletes a chat session and cascades to delete all associated message rows.
     """
+    agent_service.delete_chat(clerk_user_id=g.user_id, chat_id=chat_id)
     return jsonify({
         "message": "Chat session and message history successfully deleted.",
         "chat_id": chat_id
@@ -73,14 +74,12 @@ def get_graph_lineage(document_id):
     GET /api/v1/agent/graph/lineage/<document_id>
     Fetches structural graph connections (nodes and edges) associated with a given document.
     """
+    result = agent_service.get_document_lineage(
+        document_id=document_id
+    )
+
     return jsonify({
         "root_document_id": str(document_id),
-        "nodes": [
-            { "id": str(document_id), "label": "Circular N° 2026-05", "type": "Document" },
-            { "id": "cb-circ-2022-12", "label": "Circular N° 2022-12", "type": "Document" }
-        ],
-        "edges": [
-            { "source": str(document_id), "target": "cb-circ-2022-12", "relationship": "MODIFIES" }
-        ]
+        "nodes": result.get("nodes", []),
+        "edges": result.get("edges", [])
     }), 200
-

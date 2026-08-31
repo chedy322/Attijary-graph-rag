@@ -404,5 +404,19 @@ class VectorService:
             }
         return chunk_map
 
+    def get_chunks_by_document_id(self, document_id: str) -> List[str]:
+        """Fetches all chunks from Weaviate for a given document_id."""
+        client = self._get_client()
+        collection = client.collections.get(self.COLLECTION_NAME)
+        response = collection.query.fetch_objects(
+            filters=Filter.by_property("document_id").equal(str(document_id))
+        )
+
+        chunks = []
+        for obj in response.objects:
+            props = obj.properties
+            chunks.append(props.get("chunk_id"))
+        return chunks
+
 
 vector_service = VectorService()

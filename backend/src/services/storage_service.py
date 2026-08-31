@@ -5,7 +5,8 @@ from datetime import datetime, timedelta, timezone
 from azure.storage.blob import generate_blob_sas, BlobSasPermissions
 from config.azure_blob import azure_blob_client
 from core.exceptions import AppError
-
+import logging
+logger = logging.getLogger(__name__)
 
 class StorageService:
     blobServiceClient = None
@@ -92,6 +93,7 @@ class StorageService:
             blob_client = self.containerClient.get_blob_client(blob=file_url)
             blob_client.delete_blob()
         except Exception as e:
+            logger.error(f"[storage_service] Error deleting blob {file_url}: {str(e)}")
             raise AppError(f"Failed to delete document: {str(e)}", 500) from e
 
     def restore_deleted_document(self, file_url: str) -> None:

@@ -22,6 +22,46 @@
       justify-content: center;
     }
 
+    @media (max-width: 767px) {
+      .sidebar {
+        position: fixed;
+        inset: 0 auto 0 0;
+        z-index: 50;
+        width: min(280px, 86vw);
+        flex: 0 0 min(280px, 86vw);
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        box-shadow: 12px 0 30px rgba(15, 23, 42, 0.25);
+      }
+
+      .sidebar.mobile-open {
+        transform: translateX(0);
+      }
+
+      .sidebar.collapsed {
+        width: min(280px, 86vw);
+        flex-basis: min(280px, 86vw);
+      }
+
+      .sidebar .brand {
+        padding: 20px;
+        justify-content: flex-start;
+      }
+
+      .sidebar .brand-text,
+      .sidebar .nav-label,
+      .sidebar .user-info,
+      .sidebar .collapse-btn span,
+      .sidebar .sign-out-btn span,
+      .sidebar .section-label {
+        display: block;
+      }
+
+      .sidebar .nav-menu { padding: 0 12px; }
+      .sidebar .nav-item { justify-content: flex-start; padding: 10px 14px; }
+      .sidebar .sidebar-footer { padding: 16px; }
+    }
+
     .nav-item {
       justify-content: center;
       padding: 12px 0;
@@ -57,6 +97,46 @@
       &:hover {
         background: rgba(239, 68, 68, 0.2);
       }
+    }
+
+    @media (max-width: 767px) {
+      .sidebar {
+        position: fixed;
+        inset: 0 auto 0 0;
+        z-index: 50;
+        width: min(280px, 86vw);
+        flex: 0 0 min(280px, 86vw);
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        box-shadow: 12px 0 30px rgba(15, 23, 42, 0.25);
+      }
+
+      .sidebar.mobile-open {
+        transform: translateX(0);
+      }
+
+      .sidebar.collapsed {
+        width: min(280px, 86vw);
+        flex-basis: min(280px, 86vw);
+      }
+
+      .sidebar .brand {
+        padding: 20px;
+        justify-content: flex-start;
+      }
+
+      .sidebar .brand-text,
+      .sidebar .nav-label,
+      .sidebar .user-info,
+      .sidebar .collapse-btn span,
+      .sidebar .sign-out-btn span,
+      .sidebar .section-label {
+        display: block;
+      }
+
+      .sidebar .nav-menu { padding: 0 12px; }
+      .sidebar .nav-item { justify-content: flex-start; padding: 10px 14px; }
+      .sidebar .sidebar-footer { padding: 16px; }
     }
   }
 
@@ -281,6 +361,49 @@
   padding: 16px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 
+  .sign-out-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    margin-bottom: 24px; /* Increased margin to separate from user profile */
+    background: rgba(239, 68, 68, 0.05); /* Softer resting background */
+    border: 1px solid rgba(239, 68, 68, 0.15); /* Subtle border for definition */
+    color: #ef4444; /* Bright red text/icon */
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 8px; /* Slightly rounder to match modern UI */
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+    svg {
+      flex-shrink: 0;
+      transition: transform 0.2s ease;
+    }
+
+    &:hover {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: rgba(239, 68, 68, 0.25);
+      
+      svg {
+        transform: translateX(-2px); /* Slight interactive nudge */
+      }
+    }
+
+    &:active {
+      transform: scale(0.98); /* Click effect */
+    }
+
+    &.icon-only {
+      justify-content: center;
+      padding: 10px;
+      
+      svg {
+        transform: none; /* Disable nudge when collapsed */
+      }
+    }
+  }
   .user-profile {
     display: flex;
     align-items: center;
@@ -350,4 +473,30 @@
       }
     }
   }
+}
+
+@media (max-width: 767px) {
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 50;
+    width: min(280px, 86vw);
+    flex: 0 0 min(280px, 86vw);
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: 12px 0 30px rgba(15, 23, 42, 0.25);
+  }
+
+  .sidebar.mobile-open { transform: translateX(0); }
+  .sidebar.collapsed { width: min(280px, 86vw); flex-basis: min(280px, 86vw); }
+  .sidebar .brand { padding: 20px; justify-content: flex-start; }
+  .sidebar .brand-text,
+  .sidebar .nav-label,
+  .sidebar .user-info,
+  .sidebar .collapse-btn span,
+  .sidebar .sign-out-btn span,
+  .sidebar .section-label { display: block; }
+  .sidebar .nav-menu { padding: 0 12px; }
+  .sidebar .nav-item { justify-content: flex-start; padding: 10px 14px; }
+  .sidebar .sidebar-footer { padding: 16px; }
 }

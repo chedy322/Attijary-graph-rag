@@ -363,8 +363,84 @@ class AgentService:
             db.session.rollback()
             logger.error(f"Error deleting chat session: {str(e)}")
             raise Exception("Failed to delete chat session", 500)
+    def get_document_lineage(
+    self, document_id: str,
+) -> Dict[str, Any]:
+        source_chunks = self.vector_service.get_chunks_by_document_id(document_id)
+        if not source_chunks:
+            return {"root_document_id": document_id, "nodes": [], "edges": []}
 
-    
-    
+        cypher_query = """
+        MATCH (s:Entity)-[r]->(o:Entity)
+        WHERE r.chunk_id IN $chunk_ids
+        RETURN 
+            s.name AS source,
+            s.type AS source_type,
+            type(r) AS relation,
+            r.chunk_id AS chunk_id,
+            o.name AS target,
+            o.type AS target_type
+        """
+        records, _, _ = self.graph_service.graph.execute_query(cypher_query, {"chunk_ids": source_chunks})
+
+        if not records:
+            return {"root_document_id": document_id, "nodes": [], "edges": []}
+
+        # Collect all unique chunk_ids attached to connected target nodes
+        found_chunk_ids = set()
+        for rec in records:
+            if rec["chunk_id"]:
+                found_chunk_ids.add(rec["chunk_id"])
+
+        # ------------------------------------------------------------------
+        # STEP 3: Query Weaviate to map returned chunk_ids to target document_ids
+        # ------------------------------------------------------------------
+        chunk_to_doc_map = self.vector_service.get_chunks_by_ids(list(found_chunk_ids))
+        # Expected returned mapping format: 
+        # { "chunk_123": {"document_id": "a9988776...", "title": "Circular N° 2022-12"} }
+
+        nodes_dict = {}
+        edges_set = set()
+
+        # Add root node explicitly
+        root_title = chunk_to_doc_map.get(source_chunks[0], {}).get("title", "Root Document")
+        nodes_dict[document_id] = {
+            "id": document_id,
+            "label": root_title,
+            "type": "Document"
+        }
+
+        for rec in records:
+            c_id = rec["chunk_id"]
+            target_doc_info = chunk_to_doc_map.get(c_id)
+
+            if target_doc_info:
+                target_doc_id = target_doc_info["document_id"]
+                target_title = target_doc_info.get("title", "Untitled Document")
+
+                # Add connected document node
+                if target_doc_id not in nodes_dict:
+                    nodes_dict[target_doc_id] = {
+                        "id": target_doc_id,
+                        "label": target_title,
+                        "type": "Document"
+                    }
+
+                # Avoid self-referencing document edges
+                if document_id != target_doc_id:
+                    edges_set.add((document_id, target_doc_id, rec["relation"]))
+
+        formatted_edges = [
+            {"source": src, "target": tgt, "relationship": rel}
+            for src, tgt, rel in edges_set
+        ]
+
+        return {
+            "root_document_id": document_id,
+            "nodes": list(nodes_dict.values()),
+            "edges": formatted_edges
+        }
+        
+        
 
 agent_service = AgentService()

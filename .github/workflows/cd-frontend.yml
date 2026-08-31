@@ -1,4 +1,4 @@
-name: CD - Backend
+name: CD - Frontend
 
 on:
   push:
@@ -10,21 +10,30 @@ on:
 concurrency:
   group: cd-frontend-production
   cancel-in-progress: true
+env:
+  DOCKER_IMAGE_NAME: attijary-front-app
+  IMAGE_TAG: ${{ github.sha }}
 
 jobs:
-    cd-frontend:
-        runs-on: ubuntu-latest
-        environment: production
-        strategy:
-            fail-fast: true
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
-              with:
-                fetch-depth: 0
+  build-frontend:
+    uses: ./.github/workflows/docker-build-image.yml
+    with:
+      dockerfile_path: 'frontend/Dockerfile'
+      image_name: attijary-front-app
+      push_image: true
+      image_tag: 'prod'
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+  cd-frontend:
+    runs-on: ubuntu-latest
+    needs: build-frontend
+    environment: production
+    steps:
+      - name: Echo Frontend Deployment
+        run: echo "Deploying frontend application to production environment"
 
-            - name: Echo Frontend Deployment
-              run: echo "Deploying frontend application to production environment"
-             
-    
-           
+      - name: Trigger render webhook
+        run: |
+          echo "Triggering Render webhook for frontend deployment"
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"

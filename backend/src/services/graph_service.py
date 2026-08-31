@@ -403,26 +403,6 @@ class GraphService:
         3. Create community grouping of the entities and relationships using graph algorithms.
         4. Store the processed data in the graph database.
         """
-
-        # 1. Extract entities and relationships from the provided chunks using an LLM
-        # Send chunk in batches
-        # all_results = []
-        # with ThreadPoolExecutor(max_workers=5) as executor:
-        #     future_to_chunk = {
-        #         executor.submit(self.extract_entities_and_relationships, chunk)
-        #         for chunk in chunks
-        #     }
-        #     for future in concurrent.futures.as_completed(future_to_chunk):
-        #         chunk = future_to_chunk[future]
-        #         try:
-        #             chunk_results = future.result()
-        #             all_results.extend(chunk_results)
-        #         except Exception as e:
-        #             logger.error(
-        #                 f"[graph_service] Error processing chunk with chunk {chunk.get('id', 'unknown')}: {str(e)}",
-        #                 exc_info=True,
-        #   
-        #           )
         all_results = []
         for i, chunk in enumerate(chunks):
             try:
@@ -612,7 +592,7 @@ class GraphService:
         if not chunk_ids:
             return
             
-        logger.info(f"[graph_service] Rolling back graph data for {len(chunk_ids)} chunk IDs...")
+        logger.info(f"[graph_service] Deleting graph data for {len(chunk_ids)} chunk IDs...")
         
         rollback_query = """
         // 1. Find and delete relationships with these chunk_ids
@@ -629,10 +609,9 @@ class GraphService:
         
         try:
             self.graph.execute_query(rollback_query, {"chunk_ids": chunk_ids})
-            logger.info("[graph_service] Successfully rolled back graph data.")
+            logger.info("[graph_service] Successfully deleted graph data chunks.")
         except Exception as e:
-            logger.error(f"[graph_service] Error during graph rollback: {str(e)}")
+            logger.error(f"[graph_service] Error during graph chunks deletion: {str(e)}")
 
-    # Delete all nodes and relationships in the graph database (use with caution) form a given document_id
-
+   
 graph_service = GraphService()

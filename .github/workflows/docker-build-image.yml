@@ -1,3 +1,5 @@
+name: Reusable Docker Build
+
 on:
   workflow_call:
     inputs:
@@ -52,7 +54,7 @@ jobs:
           context: .
           file: ${{ inputs.dockerfile_path }}
           push: false
-          load: true
+          load: ${{ !inputs.push_image }}
           build-args: ${{ inputs.build_args }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

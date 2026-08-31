@@ -20,7 +20,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    image: attijary-front-app-v1.0
+    image: attijary-front-app
     container_name: frontend_app
     restart: unless-stopped
     ports:

@@ -19,6 +19,7 @@ export class AppComponent {
   router = inject(Router);
 
   isSidebarCollapsed = false;
+  isMobileSidebarOpen = false;
 
   get isAuthPage(): boolean {
     return this.router.url.includes('/auth') || this.router.url.includes('/sign-in');
@@ -30,5 +31,13 @@ export class AppComponent {
 
   onToggleSidebar(): void {
     this.isSidebarCollapsed = !this.isSidebarCollapsed;
+  }
+
+  toggleMobileSidebar(): void {
+    this.isMobileSidebarOpen = !this.isMobileSidebarOpen;
+  }
+
+  closeMobileSidebar(): void {
+    this.isMobileSidebarOpen = false;
   }
 }

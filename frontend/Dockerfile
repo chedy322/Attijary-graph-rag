@@ -14,9 +14,9 @@ FROM nginxinc/nginx-unprivileged:alpine
 
 # Copy built Angular app files to Nginx HTML folder
 COPY --from=build /app/dist/graphrag-frontend/browser /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 # Expose port 8080
 EXPOSE 8080
 
 # Start Nginx server
-CMD ["nginx", "-g", "daemon off;"]
+# CMD ["nginx", "-g", "daemon off;"]

@@ -309,6 +309,8 @@
 
 .table-responsive {
   overflow-x: auto;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
 .data-table {
@@ -331,6 +333,26 @@
     border-bottom: 1px solid #f1f5f9;
     font-size: 13px;
     color: #334155;
+  }
+
+  @media (max-width: 767px) {
+    .dashboard-page { padding: 16px; }
+    .metrics-grid { grid-template-columns: 1fr; gap: 12px; }
+    .page-header .header-actions,
+    .content-card .toolbar,
+    .content-card .toolbar .filter-controls {
+      width: 100%;
+    }
+    .page-header .header-actions,
+    .content-card .toolbar .filter-controls { flex-wrap: wrap; }
+    .content-card { padding: 12px; }
+    .data-table { min-width: 760px; }
+    .modal-backdrop { padding: 16px; }
+    .modal-backdrop .modal-card {
+      width: min(100%, 480px);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
   }
 
   .doc-cell {
@@ -709,5 +731,43 @@
       justify-content: flex-end;
       gap: 10px;
     }
+  }
+}
+
+@media (max-width: 767px) {
+  .dashboard-page {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .metrics-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .table-responsive {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .data-table {
+    min-width: 720px;
+  }
+
+  .content-card {
+    padding: 12px;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-box,
+  .filter-controls {
+    width: 100%;
+    max-width: none;
   }
 }

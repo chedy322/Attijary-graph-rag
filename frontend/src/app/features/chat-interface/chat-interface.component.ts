@@ -24,6 +24,11 @@ export class ChatInterfaceComponent implements OnInit {
   isThinking = false;
   activeTab: 'all' | 'today' | 'week' | 'older' = 'all';
   errorMessage: string | null = null;
+  showChatHistory = false;
+
+  toggleChatHistory(): void {
+    this.showChatHistory = !this.showChatHistory;
+  }
 
   ngOnInit(): void {
     this.route.params.subscribe((params) => {

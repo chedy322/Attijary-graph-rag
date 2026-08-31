@@ -26,7 +26,9 @@ export class SidebarComponent {
 
   @Input() userRole: UserRole | null = null;
   @Input() isCollapsed = false;
+  @Input() mobileOpen = false;
   @Output() toggleCollapse = new EventEmitter<void>();
+  @Output() closeMobileSidebar = new EventEmitter<void>();
 
   adminMenuItems: MenuItem[] = [
     { label: 'Chat', route: '/chat', icon: 'message-square' },
@@ -68,5 +70,9 @@ export class SidebarComponent {
   onSignOut(): void {
     this.authService.logout();
     void this.router.navigate(['/sign-in']);
+  }
+
+  onNavigation(): void {
+    this.closeMobileSidebar.emit();
   }
 }
