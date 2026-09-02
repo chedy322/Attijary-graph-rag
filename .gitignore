@@ -41,11 +41,14 @@ build/
 *.tfstate.*
 *.exe
 *.tfstate.backup
+secrets.auto.tfvars
 *.db
 *.sqlite
 *.vector
 *.bin
 *.pkl
 *.pdf
+*.tfplan
+tfplan*
 ARCHITECTURE.md
 TODO

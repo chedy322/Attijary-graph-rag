@@ -56,7 +56,7 @@ class StorageService:
             A fully-qualified SAS URL string.
         """
         try:
-            start_time = datetime.now(timezone.utc)
+            start_time = datetime.now(timezone.utc)- timedelta(minutes=15)  # Start time is 5 minutes in the past to account for clock skew
             expire_time = start_time + timedelta(hours=1)
 
             # FIX: Translated Node.js SAS generation into standard Python azure-storage-blob implementation

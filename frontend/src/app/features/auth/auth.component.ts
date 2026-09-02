@@ -48,12 +48,14 @@ export class AuthComponent implements OnInit {
   }
 
   onSubmit(): void {
-    if (!this.email || this.isLoading) return;
-
+    if (!this.email || !this.password || this.isLoading) return;
+    if (this.activeTab === 'signup' && (!this.firstname || !this.lastname)) return;
     this.isLoading = true;
     this.errorMessage = null;
-
-    this.authService.login(this.email, this.password).subscribe({
+    const authObs$ =this.activeTab === 'signin'
+      ? this.authService.login(this.email, this.password)
+      : this.authService.register(this.email, this.password, this.firstname, this.lastname);
+    authObs$.subscribe({
       next: (profile) => {
         this.isLoading = false;
         this.router.navigate([
@@ -62,7 +64,7 @@ export class AuthComponent implements OnInit {
       },
       error: (err) => {
         this.isLoading = false;
-        console.error('Login/Sync failed:', err);
+        console.error('Authentication/Sync failed:', err);
         this.errorMessage =
           err?.error?.message ||
           err?.message ||

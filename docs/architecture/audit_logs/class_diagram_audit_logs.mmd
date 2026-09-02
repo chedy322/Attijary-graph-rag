@@ -1,0 +1,44 @@
+classDiagram
+direction TB
+    class Handler {
+	    +emit(record: LogRecord)
+    }
+
+    class AuditLogTask {
+	    +max_retries: int = 3
+	    +write_audit_log_task(audit_payload: Dict)
+    }
+
+    class AuditLog {
+	    +id: Integer
+	    +actor_id: Integer
+	    +action: String
+	    +target_resource: String
+	    +target_id: String
+	    +ip_address: String
+	    +changes: JSONB
+	    +created_at: DateTime
+    }
+
+    class AuditLogger {
+	    +info(msg: String, extra: Dict)
+    }
+
+    class `AppService/AppController` {
+    }
+
+    class CeleryAuditLogHandler {
+	    Dict
+	    +emit(record: LogRecord)
+    }
+
+	<<Python_Standard_Library>> Handler
+	<<Celery_Task>> AuditLogTask
+	<<SQLAlchemy_Model>> AuditLog
+	<<Python_Logger_Instance>> AuditLogger
+
+    Handler <|-- CeleryAuditLogHandler : inherits
+    `AppService/AppController` "1..*" ..> "1.0" AuditLogger : uses
+    AuditLogger --> CeleryAuditLogHandler : passes LogRecord to
+    CeleryAuditLogHandler ..> AuditLogTask : dispatches task via delay()
+    AuditLogTask ..> AuditLog : creates & persists

@@ -1,6 +1,9 @@
 import logging
+import traceback
 from flask import Flask, jsonify, request, current_app
 from werkzeug.exceptions import HTTPException
+
+from webhooks.n8n_send_logs import send_n8n_webhook
 
 logger = logging.getLogger(__name__)
 
@@ -72,8 +75,19 @@ def handle_exception(error):
     # 1. Unroll tuple exceptions raised from shared service logic: raise Exception("msg", 400)
     if hasattr(error, "args") and len(error.args) == 2 and isinstance(error.args[1], int):
         message, status_code = error.args
+        error_type = (
+            "Client Error" if status_code < 500 else "Server Error (Tuple)"
+        )
+        if status_code >= 500:
+            # Trigger the n8n webhook for server errors
+            send_n8n_webhook(
+                error_type=error_type,
+                message=message,
+                status_code=status_code,
+                stack_trace=traceback.format_exc()
+                )
         response = jsonify({
-            "error": "Client Error" if status_code < 500 else "Server Error",
+            "error": error_type,
             "message": str(message),
             "status": status_code
         })
@@ -82,6 +96,14 @@ def handle_exception(error):
 
     # 2. Catch Flask/HTTPExceptions (401, 403, 404, etc.)
     if isinstance(error, HTTPException):
+        if error.code and error.code >= 500:
+            # Trigger the n8n webhook for server errors
+            send_n8n_webhook(
+                error_type=error.name,
+                message=error.description,
+                status_code=error.code,
+                stack_trace=traceback.format_exc()
+            )
         response = jsonify({
             "error": error.name,
             "message": error.description,
@@ -92,6 +114,12 @@ def handle_exception(error):
 
     # 3. Catch general unhandled exceptions (500)
     current_app.logger.error(f"Unhandled Exception: {str(error)}", exc_info=True)
+    send_n8n_webhook(
+       error_type=error.__class__.__name__,
+        message=str(error),
+        status_code=500,
+        stack_trace=traceback.format_exc()
+    )
     response = jsonify({
         "error": "Internal Server Error",
         "message": str(error),

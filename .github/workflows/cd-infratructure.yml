@@ -52,4 +52,6 @@ jobs:
                     exit-code: '1'
 
             -   name: Apply Terraform Changes
+                env:
+                    TF_VAR_admin_ssh_key: ${{ secrets.ADMIN_SSH_KEY }}
                 run: terraform apply -auto-approve tfplan

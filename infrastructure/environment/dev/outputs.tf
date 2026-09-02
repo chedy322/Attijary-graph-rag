@@ -19,3 +19,7 @@ output "AZURE_STORAGE_CONNECTION_STRING" {
   description = "Azure Storage Connection String"
   sensitive   = true # Must match sensitive flag from module
 }
+
+# output "public_ip_address" {
+#   value = module.virtual_machine.public_ip_address
+# }

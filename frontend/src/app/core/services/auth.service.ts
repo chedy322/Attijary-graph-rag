@@ -129,6 +129,67 @@ export class AuthService {
   // Fetch fresh JWT dynamically using your template name
   return await clerk.session.getToken({ template: 'graph-rag-jwt' });
   }
+  // Add register method mirroring login
+register(email: string, password: string, firstName: string, lastName: string): Observable<UserProfile> {
+  return from(this.ensureClerkSignUp(email, password, firstName, lastName)).pipe(
+    switchMap(({ user }) => this.syncUserWithBackend(this.toSyncRequest(user))),
+  );
+}
+
+private async ensureClerkSignUp(
+  email: string,
+  password: string,
+  firstName: string,
+  lastName: string
+): Promise<{ user: any }> {
+  const clerk = await this.waitForClerk();
+  if (!clerk) {
+    throw new Error('Clerk is not ready. Please try again.');
+  }
+
+  if (clerk.session && clerk.user) {
+    throw new Error('A Clerk session is already active.');
+  }
+
+  if (!clerk.client?.signUp) {
+    throw new Error('Clerk sign-up is unavailable.');
+  }
+
+  try {
+    // 1. Create the user sign-up attempt in Clerk
+    const signUpAttempt = await clerk.client.signUp.create({
+      emailAddress: email,
+      password,
+      firstName,
+      lastName,
+    });
+
+    // Handle instance configuration requirement if email verification is mandatory
+    if (signUpAttempt.status !== 'complete') {
+      // If your Clerk instance requires email verification, trigger complete or handle state here
+      throw new Error(`Sign up incomplete (Status: ${signUpAttempt.status}).`);
+    }
+
+    // 2. Activate the session in Clerk
+    await clerk.setActive({ session: signUpAttempt.createdSessionId });
+
+    // 3. Fetch session JWT
+    const token = await clerk.session?.getToken({
+      template: 'graph-rag-jwt',
+    });
+
+    if (!clerk.user || !token) {
+      throw new Error('Clerk did not establish an active session.');
+    }
+
+    this.sessionToken.set(token);
+    return { user: clerk.user };
+  } catch (error: any) {
+    const clerkError = error?.errors?.[0]?.longMessage || error?.errors?.[0]?.message;
+    throw new Error(clerkError || error?.message || 'Registration failed.');
+  }
+}
+
 
   syncUserWithBackend(userData?: UserSyncRequest): Observable<UserProfile> {
     const syncUrl = `${environment.apiUrl}/v1/sync`;

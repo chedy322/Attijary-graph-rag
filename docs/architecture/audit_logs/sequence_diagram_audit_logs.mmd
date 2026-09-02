@@ -1,0 +1,41 @@
+sequenceDiagram
+    autonumber
+    actor User
+    participant Service as Any Service (Auth, Order, etc.)
+    participant Logger as Python Logger ("audit")
+    participant Handler as CeleryAuditLogHandler
+    participant Broker as Celery Broker
+    participant Worker as Celery Worker
+    participant DB as Audit DB
+
+    %% 1. Synchronous Application Execution
+    User->>Service: Request Action (e.g. POST /users/register)
+    activate Service
+    Service->>Service: Execute business logic & update DB
+
+    %% 2. Logger Trigger & Queue Dispatch
+    Service->>Logger: logger.info("Event", extra={"audit": payload})
+    activate Logger
+    Logger->>Handler: emit(record)
+    activate Handler
+    Handler->>Broker: write_audit_log_task.delay(payload)
+    activate Broker
+    Broker-->>Handler: Task Queued ACK
+    deactivate Broker
+    deactivate Handler
+    deactivate Logger
+
+    %% 3. Immediate HTTP Response
+    Service-->>User: Return 200 OK / 201 Created
+    deactivate Service
+
+    %% 4. Asynchronous Background Ingestion
+    Note over Broker,Worker: Asynchronous Process (Worker Execution)
+    Worker->>Broker: Poll / pull queued task
+    activate Worker
+    Worker->>DB: Batch store in DB
+    activate DB
+    DB-->>Worker: Commit OK
+    deactivate DB
+    deactivate Worker
+

@@ -25,7 +25,7 @@ resource "azurerm_storage_account" "storage" {
 
 resource "time_sleep" "wait_for_storage" {
   depends_on      = [azurerm_storage_account.storage]
-  create_duration = "15s"
+  create_duration = "30s"
 }
 
 resource "azurerm_storage_container" "container"{

@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { AuthService, DocumentService, ScraperService } from '../../core/services';
 import { Document } from '../../core/models';
-
+import { switchMap } from 'rxjs';
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
@@ -44,10 +44,12 @@ export class AdminDashboardComponent implements OnInit {
   newDocDate = '';
   selectedFile: File | null = null;
 
-  ngOnInit(): void {
+ngOnInit(): void {
+  // Ensure Clerk session is fully initialized before firing backend queries
+  this.authService.initialize().then(() => {
     this.loadDocuments();
-  }
-
+  });
+}
   get totalIndexed(): number {
     return this.totalDocuments || this.documents.length;
   }
@@ -147,64 +149,107 @@ export class AdminDashboardComponent implements OnInit {
     }
   }
 
-  submitUpload(): void {
-    if (!this.newDocTitle || !this.newDocDate || !this.selectedFile) {
-      this.errorMessage = 'Title, document date, and file are required.';
-      return;
-    }
-    this.isUploading = true;
-    this.errorMessage = null;
+  // submitUpload(): void {
+  //   if (!this.newDocTitle || !this.newDocDate || !this.selectedFile) {
+  //     this.errorMessage = 'Title, document date, and file are required.';
+  //     return;
+  //   }
+  //   this.isUploading = true;
+  //   this.errorMessage = null;
 
-    this.documentService
-      .getUploadUrl({
-        filename: this.selectedFile.name,
-        title: this.newDocTitle,
-        number: this.newDocNumber,
-        category: this.newDocCategory,
-        date: this.newDocDate,
-      })
-      .subscribe({
-        next: (res) => {
-          if (this.selectedFile) {
-            this.documentService
-              .uploadFileToBlob(res.upload_url, this.selectedFile)
-              .subscribe({
-                next: () => {
-                  this.documentService
-                    .indexDocument(res.document_id)
-                    .subscribe({
-                      next: () => {
-                        this.isUploading = false;
-                        this.closeUploadModal();
-                        this.loadDocuments();
-                      },
-                      error: (err) => {
-                        this.isUploading = false;
-                        this.errorMessage =
-                          err?.error?.message ||
-                          'Failed to index document after upload.';
-                      },
-                    });
-                },
-                error: (err) => {
-                  this.isUploading = false;
-                  this.errorMessage =
-                    err?.error?.message ||
-                    'Failed to push file binary to storage.';
-                },
-              });
-          }
-        },
-        error: (err) => {
-          this.isUploading = false;
-          this.errorMessage =
-            err?.error?.message ||
-            err?.message ||
-            'Failed to obtain pre-signed upload SAS token.';
-        },
-      });
+  //   this.documentService
+  //     .getUploadUrl({
+  //       filename: this.selectedFile.name,
+  //       title: this.newDocTitle,
+  //       number: this.newDocNumber,
+  //       category: this.newDocCategory,
+  //       date: this.newDocDate,
+  //     })
+  //     .subscribe({
+  //       next: (res) => {
+  //         if (this.selectedFile) {
+  //           this.documentService
+  //             .uploadFileToBlob(res.upload_url, this.selectedFile)
+  //             .subscribe({
+  //               next: () => {
+  //                 this.documentService
+  //                   .indexDocument(res.document_id)
+  //                   .subscribe({
+  //                     next: () => {
+  //                       this.isUploading = false;
+  //                       this.closeUploadModal();
+  //                       this.loadDocuments();
+  //                     },
+  //                     error: (err) => {
+  //                       this.isUploading = false;
+  //                       this.errorMessage =
+  //                         err?.error?.message ||
+  //                         'Failed to index document after upload.';
+  //                     },
+  //                   });
+  //               },
+  //               error: (err) => {
+  //                 this.isUploading = false;
+  //                 this.errorMessage =
+  //                   err?.error?.message ||
+  //                   'Failed to push file binary to storage.';
+  //               },
+  //             });
+  //         }
+  //       },
+  //       error: (err) => {
+  //         this.isUploading = false;
+  //         this.errorMessage =
+  //           err?.error?.message ||
+  //           err?.message ||
+  //           'Failed to obtain pre-signed upload SAS token.';
+  //       },
+  //     });
+  // }
+  
+
+submitUpload(): void {
+  if (!this.newDocTitle || !this.newDocDate || !this.selectedFile) {
+    this.errorMessage = 'Title, document date, and file are required.';
+    return;
   }
 
+  const fileToUpload = this.selectedFile;
+  this.isUploading = true;
+  this.errorMessage = null;
+
+  // Step 1: Request pre-signed SAS URL from backend
+  this.documentService
+    .getUploadUrl({
+      filename: fileToUpload.name,
+      title: this.newDocTitle,
+      number: this.newDocNumber,
+      category: this.newDocCategory,
+      date: this.newDocDate,
+    })
+    .pipe(
+      // Step 2: Upload file binary directly to Azure Storage SAS URL
+      switchMap((res) =>
+        this.documentService
+          .uploadFileToBlob(res.upload_url, fileToUpload)
+          .pipe(switchMap(() => this.documentService.indexDocument(res.document_id)))
+      )
+    )
+    .subscribe({
+      next: () => {
+        this.isUploading = false;
+        this.closeUploadModal();
+        this.loadDocuments();
+      },
+      error: (err) => {
+        this.isUploading = false;
+        this.errorMessage =
+          err?.error?.message ||
+          err?.message ||
+          'Upload sequence failed. Please verify your connection and permissions.';
+      },
+    });
+}
   deleteDoc(docId: string): void {
     if (
       !confirm(

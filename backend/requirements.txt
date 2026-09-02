@@ -40,9 +40,11 @@ werkzeug
 
 # Document Processing (Lightweight PDF Parsing)
 unstructured
+unstructured[pdf]
 pdfminer.six
 pypdf
 pdf2image
+python-magic
 
 networkx
 

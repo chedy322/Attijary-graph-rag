@@ -53,6 +53,8 @@ jobs:
           format: 'sarif'
 
       - name: Plan Terraform Changes
+        env:
+          TF_VAR_admin_ssh_key: ${{ secrets.ADMIN_SSH_KEY }}
         run: terraform plan -out=tfplan
 
       - name: Upload Terraform Plan
