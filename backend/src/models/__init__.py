@@ -2,7 +2,7 @@ from models.user import User, UserRole
 from models.document import Document, DocumentStatus, DocumentOrigin
 from models.chat import Chat
 from models.conversation import Conversation, ConversationRole
-
+from models.audit_log import AuditLog
 __all__ = [
     "User",
     "UserRole",
@@ -12,4 +12,5 @@ __all__ = [
     "Chat",
     "Conversation",
     "ConversationRole",
+    "AuditLog",
 ]

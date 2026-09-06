@@ -1,6 +1,3 @@
-
-
-
 from typing import Any, Dict
 import requests
 import os
@@ -21,10 +18,10 @@ def send_n8n_webhook(error_type, message, status_code, stack_trace=None):
 
     }
     if not N8N_WEBHOOK_URL:
-        raise ValueError("N8N_WEBHOOK_URL is not set")
+        logger.warning("N8N_WEBHOOK_URL is not set. Skipping webhook call.")
+        return
     try:
         response = requests.post(N8N_WEBHOOK_URL, json=payload)
-        response.raise_for_status()  #
-    except requests.RequestException as e:
+        response.raise_for_status()  
+    except Exception as e:
         logger.error(f"Failed to send webhook: {e}")
-        raise ValueError(f"Failed to send webhook: {e}")

@@ -4,7 +4,7 @@ import logging
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-
+from core.logging_config import setup_audit_interceptor
 from config.database import db, migrate
 from config.celery_app import celery_client
 from core.exceptions import register_error_handlers
@@ -75,7 +75,7 @@ def create_app() -> Flask:
     # Initialize extensions
     db.init_app(app)
     migrate.init_app(app, db)
-    
+    setup_audit_interceptor(app)  
 
     # Celery Setup
     app.config["CELERY"] = dict(
@@ -84,6 +84,7 @@ def create_app() -> Flask:
         imports=[
             "tasks.indexing_tasks",
             "tasks.deletion_tasks",
+            "tasks.audit_logs",
         ],
     )
     celery_app = celery_client.init_app(app)

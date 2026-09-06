@@ -1,17 +1,21 @@
+import uuid
+
 from core.exceptions import AppError
 from models.user import User
 from config.clerk import clerk_client
 from config.database import db
 from services.dto.auth_service_dto import AuthServiceDTO
 from flask import g
-
+import logging
+import datetime
+audit_logger = logging.getLogger("audit")
 
 class AuthService:
     def __init__(self, clerk_client, db):
         self.clerk_client = clerk_client
         self.db = db
 
-    def sync_user(self):
+    def sync_user(self,extra_data: dict = None) -> AuthServiceDTO:
         """
         Ensures the authenticated Clerk user exists in the local database.
         Creates a new local user record if they are logging in for the first time.
@@ -24,6 +28,19 @@ class AuthService:
                 self.db.session.query(User).filter_by(clerk_id=clerk_user_id).first()
             )
             if existing_user:
+                audit_logger.info("User log in successful", extra=
+                                  {"audit": {
+                                      "id":uuid.uuid4(),
+                    "actor_id": existing_user.user_id, 
+                 "action": "LOGIN",
+                  "details": "User logged in successfully.",
+                  "target_id": existing_user.user_id, 
+                  "target_resource": "User",
+                  "ip_address": extra_data.get("ip_address") if extra_data else None,
+                  "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+                  }
+                }
+                  )
                 # User exists, no need to make an expensive network call to Clerk
                 return AuthServiceDTO.map(existing_user)
 
@@ -54,6 +71,19 @@ class AuthService:
             self.db.session.add(new_user)
             self.db.session.commit()
 
+            audit_logger.info("User registered successfullly", extra={"audit":
+                              {
+                "id":uuid.uuid4(),
+                "user_id": new_user.user_id, 
+             "action": "REGISTER",
+                "details": "User registered successfully.",
+                "target_id": new_user.user_id,
+                "target_resource": "User",
+                "ip_address": extra_data.get("ip_address") if extra_data else None,
+                "created_at": datetime.datetime.utcnow()
+                }
+                }
+                  )
             return AuthServiceDTO.map(new_user)
         except AppError as e:
             self.db.session.rollback()

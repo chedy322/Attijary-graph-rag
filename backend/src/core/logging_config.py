@@ -68,3 +68,46 @@ def configure_logging(app):
             app.logger.info("Request processed successfully", extra=log_payload)
 
         return response
+
+
+
+
+fallback_logger = logging.getLogger("app.system_error")
+from tasks.audit_logs import audit_log_task
+class CeleryAuditLogHandler(logging.Handler):
+    def emit(self, record):
+        """
+        Emit a log record to the Celery audit log task.
+        This method is called by the logging framework when a log event occurs.
+        """
+        data=getattr(record,"audit",None)
+        if not data:
+            return 
+        
+        try:
+
+            log_payload = {
+                "id": data.get("id", None),
+                "actor_id": data.get("actor_id", None),
+                "action": data.get("action", None),
+                "target_resource": data.get("target_resource", None),
+                "target_id": data.get("target_id", None),
+                "ip_address": data.get("ip_address", None),
+                "details": data.get("details", None),
+            }
+            # Send the log payload to the Celery audit log task
+            audit_log_task.delay(log_payload)
+        except Exception as e:
+            # If logging fails
+            fallback_logger.error(f"Failed to emit log record to Celery audit log task: {e}")
+
+def setup_audit_interceptor(app):
+    audit_handler = CeleryAuditLogHandler()
+    audit_logger = logging.getLogger("audit")
+
+    # Prevent duplicate handlers if setup is called multiple times
+    if not audit_logger.handlers:
+        audit_logger.addHandler(audit_handler)
+        audit_logger.setLevel(logging.INFO)
+    #    Stop audit events from propagating to the root console logger
+        audit_logger.propagate = False
