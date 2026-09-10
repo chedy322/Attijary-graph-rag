@@ -1,4 +1,5 @@
 
+from services.dto.get_audit_log_dto import GetLogs
 from models.audit_log import AuditLog
 from config import db
 from typing import List, Dict, Any
@@ -63,6 +64,23 @@ class AuditService:
             return self.db.session.query(AuditLog).filter_by(id=log_id).first()
         except Exception as e:
             logger.error(f"[audit_logs] Error while searching for audit log with id {log_id}: {e}")
+            raise e
+
+    def find_all_logs(self,limit=10,offset=0) -> List[GetLogs]:
+        """
+        Retrieve all audit log entries from the database.
+
+        Returns:
+            A list of AuditLog objects.
+        """
+        try:
+            logger.info("[audit_logs] Retrieving all audit logs.")
+            all_logs=self.db.session.query(AuditLog).offset(offset).limit(limit).all()
+            # Transfer the returned result to DTO
+            returned_logs=[GetLogs.map(log) for log in all_logs]
+            return returned_logs
+        except Exception as e:
+            logger.error(f"[audit_logs] Error while retrieving all audit logs: {e}")
             raise e
 
 audit_service = AuditService()

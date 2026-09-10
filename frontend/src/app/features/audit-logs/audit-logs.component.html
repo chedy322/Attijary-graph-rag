@@ -1,0 +1,50 @@
+<div class="audit-page">
+  <header class="audit-header">
+    <div>
+      <h1>Audit Logs</h1>
+      <p>Track and review user activities and system events across the platform.</p>
+    </div>
+    <div class="audit-header-actions">
+      <span class="header-icon" title="Notifications">♧</span>
+      <span class="header-icon" title="Help">?</span>
+      <button class="export-btn" type="button" (click)="exportLogs()" [disabled]="!filteredLogs.length">
+        <span>⇩</span> Export Logs
+      </button>
+    </div>
+  </header>
+
+  <section class="filters-card" aria-label="Audit log filters">
+    <label class="search-field">
+      <span>⌕</span>
+      <input type="search" placeholder="Search by user, action, target resource, or details..." [(ngModel)]="searchTerm" (ngModelChange)="applyFilters()" />
+    </label>
+    <label class="filter-field"><span>Action</span><select [(ngModel)]="selectedAction" (ngModelChange)="applyFilters()"><option value="ALL">All Actions</option><option *ngFor="let action of actions" [value]="action">{{ action }}</option></select></label>
+    <label class="filter-field"><span>Target Resource</span><select [(ngModel)]="selectedResource" (ngModelChange)="applyFilters()"><option value="ALL">All Resources</option><option *ngFor="let resource of resources" [value]="resource">{{ resource }}</option></select></label>
+    <label class="filter-field"><span>Date Range</span><select [(ngModel)]="selectedRange" (ngModelChange)="applyFilters()"><option value="ALL">Any Time</option><option value="1">Last 24 Hours</option><option value="7">Last 7 Days</option><option value="30">Last 30 Days</option></select></label>
+  </section>
+
+  <section class="logs-card">
+    <div *ngIf="isLoading" class="state-message"><span class="spinner"></span>Loading audit activity...</div>
+    <div *ngIf="!isLoading && errorMessage" class="state-message error-state">{{ errorMessage }} <button type="button" (click)="loadLogs()">Retry</button></div>
+    <div class="table-scroll" *ngIf="!isLoading && !errorMessage">
+      <table>
+        <thead><tr><th>Time ↕</th><th>Action</th><th>Target Resource</th><th>IP Address</th><th>Details</th><th aria-label="Actions"></th></tr></thead>
+        <tbody>
+          <tr *ngFor="let log of filteredLogs; trackBy: trackById">
+            <td class="time-cell">{{ log.created_at | date:'MMM d, y, HH:mm:ss' }}</td>
+            <td><span class="action-badge" [class]="actionClass(log.action)">{{ log.action }}</span></td>
+            <td><div class="resource-cell"><span class="resource-icon" [class]="resourceIcon(log.target_resource)">◈</span><span>{{ log.target_resource }}</span></div></td>
+            <td class="ip-cell">{{ log.ip_address }}</td>
+            <td class="details-cell">{{ log.details }}</td>
+            <td class="more-cell">⋮</td>
+          </tr>
+          <tr *ngIf="!filteredLogs.length"><td colspan="6" class="empty-cell">No audit logs match the selected filters.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <footer class="table-footer">
+      <span>Showing {{ pageStart }} to {{ pageEnd }} of {{ totalLogs }} logs</span>
+      <div class="pagination"><button type="button" (click)="setPage(currentPage - 1)" [disabled]="currentPage === 1">‹</button><span>{{ currentPage }}</span><button type="button" (click)="setPage(currentPage + 1)" [disabled]="totalPages === 0 || currentPage >= totalPages">›</button></div>
+    </footer>
+  </section>
+</div>

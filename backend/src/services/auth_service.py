@@ -28,19 +28,6 @@ class AuthService:
                 self.db.session.query(User).filter_by(clerk_id=clerk_user_id).first()
             )
             if existing_user:
-                audit_logger.info("User log in successful", extra=
-                                  {"audit": {
-                                      "id":uuid.uuid4(),
-                    "actor_id": existing_user.user_id, 
-                 "action": "LOGIN",
-                  "details": "User logged in successfully.",
-                  "target_id": existing_user.user_id, 
-                  "target_resource": "User",
-                  "ip_address": extra_data.get("ip_address") if extra_data else None,
-                  "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
-                  }
-                }
-                  )
                 # User exists, no need to make an expensive network call to Clerk
                 return AuthServiceDTO.map(existing_user)
 

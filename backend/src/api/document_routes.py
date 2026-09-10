@@ -70,6 +70,9 @@ def get_upload_url():
         uploaded_by_user_id=clerk_user_id,
         number=number,
         category=category,
+        extra_data={
+            "ip_address": request.remote_addr,
+        }
     )
 
     sas_url = storage_service.generate_upload_sas(azure_blob_path)

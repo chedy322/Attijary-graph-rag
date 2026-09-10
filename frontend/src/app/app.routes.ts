@@ -4,6 +4,7 @@ import { AdminDashboardComponent } from './features/admin-dashboard/admin-dashbo
 import { ChatInterfaceComponent } from './features/chat-interface/chat-interface.component';
 import { DocumentVerificationComponent } from './features/document-verification/document-verification.component';
 import { GraphExplorerComponent } from './features/graph-explorer/graph-explorer.component';
+import { AuditLogsComponent } from './features/audit-logs/audit-logs.component';
 import { authGuard } from './core/guards/auth.guard';
 import { adminRoleGuard } from './core/guards/admin-role.guard';
 
@@ -18,6 +19,7 @@ export const routes: Routes = [
     canActivate: [authGuard, adminRoleGuard],
   },
   { path: 'chat', component: ChatInterfaceComponent, canActivate: [authGuard] },
+  { path: 'audit', component: AuditLogsComponent, canActivate: [authGuard, adminRoleGuard] },
   {
     path: 'chat/:id',
     component: ChatInterfaceComponent,

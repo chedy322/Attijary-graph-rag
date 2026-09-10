@@ -95,12 +95,13 @@ def create_app() -> Flask:
     from api.auth_routes import auth_bp
     from api.agent_routes import agent_bp
     from api.scraper_routes import scraper_bp
+    from api.audit_routes import audit_bp
 
     app.register_blueprint(agent_bp, url_prefix="/api/v1/agent")
     app.register_blueprint(document_bp, url_prefix="/api/v1/documents")
     app.register_blueprint(auth_bp, url_prefix="/api/v1/sync")
     app.register_blueprint(scraper_bp, url_prefix="/api/v1/scraper")
-
+    app.register_blueprint(audit_bp, url_prefix="/api/v1/audits")
     @app.route("/health", methods=["GET"])
     def health_check():
         return jsonify(

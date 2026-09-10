@@ -73,7 +73,7 @@ services:
     restart: unless-stopped
     container_name: celery_worker_app
     # Overrides the default CMD in your Dockerfile
-    command: celery -A celery_worker.celery_app worker --loglevel=info --pool=threads
+    command: celery -A celery_worker.celery_app worker --concurrency=2 --loglevel=info --pool=threads
     networks:
       - backend_network
     env_file:
