@@ -151,8 +151,9 @@ class GraphService:
             f"[graph_service] Removing duplicates from extracted data. Initial count: {len(extracted_data)}"
         )
         if not extracted_data:
+            logger.debug(f"Data is empty, skipping deduplication with data extracted_data: {extracted_data}")
             logger.info(
-                f"[graph_service] No data to deduplicate for chunk_id={extracted_data.get('chunk_id', 'unknown')}. Returning empty list."
+                f"[graph_service] No data to deduplicate. Returning empty list."
             )
             return []
 
@@ -238,7 +239,7 @@ class GraphService:
         """
         if not extracted_data:
             logger.info(
-                f"[graph_service] No data to create community groups for chunk_id={extracted_data.get('chunk_id', 'unknown')}."
+                f"[graph_service] No data to create community groups."
             )
             return [], {}
         # Initialize a graph using NetworkX

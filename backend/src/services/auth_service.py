@@ -11,7 +11,7 @@ import datetime
 audit_logger = logging.getLogger("audit")
 
 class AuthService:
-    def __init__(self, clerk_client, db):
+    def __init__(self, clerk_client=clerk_client, db=db):
         self.clerk_client = clerk_client
         self.db = db
 
@@ -80,4 +80,4 @@ class AuthService:
             raise AppError(f"User synchronization failed: {str(e)}", 500)
 
 
-auth_service = AuthService(clerk_client=clerk_client, db=db)
+auth_service = AuthService()

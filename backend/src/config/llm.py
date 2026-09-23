@@ -23,11 +23,19 @@ class LlmSingleton:
                     llm_api_key = os.getenv("LLM_API_KEY")
                     if not llm_api_key:
                         raise ValueError("LLM_API_KEY environment variable is not set")
-                    self.llm = ChatGoogleGenerativeAI(
-                        model="gemini-3.6-flash",
+                    primary_model = ChatGoogleGenerativeAI(
+                        model="gemini-3.5-flash-lite",
                         temperature=0,
                         google_api_key=llm_api_key,
+                        max_output_tokens=1024,
                     )
+                    fallback_model = ChatGoogleGenerativeAI(
+                        model="gemini-3.1-flash-lite",
+                        temperature=0,
+                        google_api_key=llm_api_key,
+                        max_output_tokens=1024,
+                    )
+                    self.llm = primary_model.with_fallbacks([fallback_model])
         return self.llm
 
     def get_embedding_model(self) -> GoogleGenerativeAIEmbeddings:

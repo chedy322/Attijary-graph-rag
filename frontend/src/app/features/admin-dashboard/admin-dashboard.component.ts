@@ -55,7 +55,7 @@ ngOnInit(): void {
   }
 
   get activeScraperSyncs(): number {
-    return this.documents.filter((d) => d.status === 'PROCESSING').length;
+    return this.documents.filter((d) => d.status === "ACTIVE/COMPLETED").length;
   }
 
   get failedPipelines(): number {
@@ -295,6 +295,6 @@ submitUpload(): void {
   }
 
   canTriggerIndex(status: Document['status']): boolean {
-    return status !== 'PROCESSING' && status !== 'COMPLETED';
+    return status !== 'PROCESSING' && status !== 'ACTIVE/COMPLETED';
   }
 }

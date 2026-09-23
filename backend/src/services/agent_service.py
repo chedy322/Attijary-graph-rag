@@ -220,7 +220,7 @@ class AgentService:
                 extracted_sources.extend(artifact.get("sources", []))
                 extracted_graph_context.extend(artifact.get("graph_context", []))
 
-        # Remove duplicate sources from the intermediate_steps as agent cab call multiple tools
+        # Remove duplicate sources from the intermediate_steps as agent can call multiple tools
         seen_sources=set()
         deduplicated_sources=[]
         for src in extracted_sources:

@@ -7,6 +7,8 @@ from flask_cors import CORS
 from core.logging_config import setup_audit_interceptor
 from config.database import db, migrate
 from config.celery_app import celery_client
+from config.vector_db import weaviate_client
+from config.neo4j_db import neo4j_client
 from core.exceptions import register_error_handlers
 from core.middleware import require_auth, admin_required
 import logging
@@ -65,11 +67,18 @@ def create_app() -> Flask:
     app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-        "pool_size": 10,
-        "max_overflow": 5,
-        "pool_timeout": 30,
-        "pool_recycle": 1800,
-        "pool_pre_ping": True,
+      "pool_size": 20,
+    "max_overflow": 5,
+    "pool_timeout": 30,
+    "pool_recycle": 120,  # Recycles connections every ~4.5 minutes before DB drops them
+    "pool_pre_ping": True,
+    "connect_args": {
+        "keepalives": 1,
+        "keepalives_idle": 30,
+        "keepalives_interval": 10,
+        "keepalives_count": 5,
+    },
+    
     }
 
     # Initialize extensions
@@ -107,7 +116,25 @@ def create_app() -> Flask:
         return jsonify(
             {"status": "healthy", "environment": os.getenv("FLASK_ENV", "development")}
         ), 200
-
+    # Readiness check endpoint to verify external dependencies readiness
+    @app.route("/healthz/ready", methods=["GET"])
+    def readiness_check():
+        try:
+            # Check database connection
+            db.session.execute("SELECT 1")
+            logger.info("Database connection is healthy.")
+            # Check the Weviate connection 
+            weaviate_client.get_client().is_ready()
+            logger.info("Weaviate connection is healthy.")
+            # Check the neo4j connection
+            neo4j_client.get_driver().verify_connectivity()
+            logger.info("Neo4j connection is healthy.")
+            # Check the clerk connection
+            # Check the redis connection
+            # check the llm connection
+        except Exception as e:
+            logger.error(f"Readiness check failed: {e}")
+            return jsonify({"status": "unhealthy", "error": str(e)}), 503
     @app.route("/api/v1/protected-route-test", methods=["GET"])
     @require_auth
     def protected_test():

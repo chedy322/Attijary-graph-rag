@@ -373,7 +373,7 @@ class VectorService:
                 f"Successfully deleted all chunks for document {document_id} from Weaviate."
             )
             return True
-
+        
         except VectorStoreError:
             raise
         except Exception as e:

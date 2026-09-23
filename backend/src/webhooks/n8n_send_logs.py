@@ -21,7 +21,7 @@ def send_n8n_webhook(error_type, message, status_code, stack_trace=None):
         logger.warning("N8N_WEBHOOK_URL is not set. Skipping webhook call.")
         return
     try:
-        response = requests.post(N8N_WEBHOOK_URL, json=payload)
+        response = requests.post(N8N_WEBHOOK_URL, headers={"X-Webhook-Secret": os.getenv('N8N_AUTH_TOKEN')}, json=payload)
         response.raise_for_status()  
     except Exception as e:
         logger.error(f"Failed to send webhook: {e}")

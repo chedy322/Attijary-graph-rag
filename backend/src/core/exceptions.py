@@ -1,10 +1,11 @@
 import logging
 import traceback
-from flask import Flask, jsonify, request, current_app
+from flask import Flask, jsonify, request
 from werkzeug.exceptions import HTTPException
 
 from webhooks.n8n_send_logs import send_n8n_webhook
 
+# Standard module logger - captures the module name in structured logs
 logger = logging.getLogger(__name__)
 
 
@@ -47,45 +48,16 @@ def _add_cors_headers(response):
     return response
 
 
-# def handle_exception(error):
-#     # 1. Catch Custom Domain Errors
-#     if isinstance(error, DomainError):
-#         current_app.logger.error(f"DomainError: {error.message} (Status: {error.status_code})")
-#         response = jsonify({"error": error.__class__.__name__, "message": error.message, "status": error.status_code})
-#         response.status_code = error.status_code
-#         return _add_cors_headers(response)
-
-#     # 2. Catch Flask/HTTPExceptions (AppError, 401 Unauthorized, 404 Not Found, etc.)
-#     if isinstance(error, HTTPException):
-#         current_app.logger.error(f"HTTPException: {error.description} (Status Code: {error.code})")
-#         response = jsonify({"error": error.name, "message": error.description, "status": error.code})
-#         response.status_code = error.code
-#         return _add_cors_headers(response)
-
-#     # 3. Catch standard unhandled Python exceptions (500)
-#     current_app.logger.error(f"Unhandled Exception: {str(error)}", exc_info=True)
-#     response = jsonify({
-#         "error": "Internal Server Error",
-#         "message": str(error) if current_app.debug else "An unexpected server error occurred.",
-#         "status": 500,
-#     })
-#     response.status_code = 500
-#     return _add_cors_headers(response)
 def handle_exception(error):
-    # 1. Unroll tuple exceptions raised from shared service logic: raise Exception("msg", 400)
+    # 1. Tuple exceptions raised from shared service logic: raise Exception("msg", 400)
     if hasattr(error, "args") and len(error.args) == 2 and isinstance(error.args[1], int):
         message, status_code = error.args
-        error_type = (
-            "Client Error" if status_code < 500 else "Server Error (Tuple)"
-        )
+        error_type = "Client Error" if status_code < 500 else "Server Error (Tuple)"
+        
         if status_code >= 500:
-            # Trigger the n8n webhook for server errors
-            send_n8n_webhook(
-                error_type=error_type,
-                message=message,
-                status_code=status_code,
-                stack_trace=traceback.format_exc()
-                )
+            logger.error(f"Server Error Tuple ({status_code}): {message}", exc_info=True)
+            _safe_send_webhook(error_type, message, status_code)
+
         response = jsonify({
             "error": error_type,
             "message": str(message),
@@ -94,16 +66,14 @@ def handle_exception(error):
         response.status_code = status_code
         return _add_cors_headers(response)
 
-    # 2. Catch Flask/HTTPExceptions (401, 403, 404, etc.)
+    # 2. Catch Flask/HTTPExceptions (401, 403, 404, 500, etc.)
     if isinstance(error, HTTPException):
         if error.code and error.code >= 500:
-            # Trigger the n8n webhook for server errors
-            send_n8n_webhook(
-                error_type=error.name,
-                message=error.description,
-                status_code=error.code,
-                stack_trace=traceback.format_exc()
-            )
+            logger.error(f"HTTPException ({error.code}): {error.description}", exc_info=True)
+            _safe_send_webhook(error.name, error.description, error.code)
+        else:
+            logger.warning(f"HTTPException ({error.code}): {error.description}")
+
         response = jsonify({
             "error": error.name,
             "message": error.description,
@@ -112,14 +82,10 @@ def handle_exception(error):
         response.status_code = error.code
         return _add_cors_headers(response)
 
-    # 3. Catch general unhandled exceptions (500)
-    current_app.logger.error(f"Unhandled Exception: {str(error)}", exc_info=True)
-    send_n8n_webhook(
-       error_type=error.__class__.__name__,
-        message=str(error),
-        status_code=500,
-        stack_trace=traceback.format_exc()
-    )
+    # 3. Catch general unhandled Python exceptions (500)
+    logger.error(f"Unhandled Exception: {str(error)}", exc_info=True)
+    _safe_send_webhook(error.__class__.__name__, str(error), 500)
+
     response = jsonify({
         "error": "Internal Server Error",
         "message": str(error),
@@ -127,6 +93,19 @@ def handle_exception(error):
     })
     response.status_code = 500
     return _add_cors_headers(response)
+
+
+def _safe_send_webhook(error_type: str, message: str, status_code: int):
+    """Helper to ensure webhook errors don't crash the exception handler."""
+    try:
+        send_n8n_webhook(
+            error_type=error_type,
+            message=message,
+            status_code=status_code,
+            stack_trace=traceback.format_exc()
+        )
+    except Exception as e:
+        logger.error(f"Failed to send n8n error notification webhook: {e}")
 
 
 def register_error_handlers(app: Flask):

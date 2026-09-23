@@ -13,7 +13,8 @@ ENV PATH="/venv/bin:$PATH"
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=requirements.txt,target=requirements.txt \
     uv pip install --compile-bytecode -r requirements.txt
-
+# 2. Install auto-instrumentation drivers (Flask, SQLAlchemy, Requests, etc.)
+RUN opentelemetry-bootstrap --action=install
 
 # Stage 2: Final runtime stage
 FROM python:3.12-slim AS final
@@ -45,4 +46,6 @@ ENV FLASK_APP=src/app.py
 USER appuser
 EXPOSE 5000
 
-CMD ["flask", "run", "--host=0.0.0.0"]
+# CMD ["opentelemetry-instrument","flask", "run", "--host=0.0.0.0", "--port=5000"]
+
+CMD ["opentelemetry-instrument", "gunicorn", "--workers", "1","--threads", "3", "-b", "0.0.0.0:5000", "--timeout", "120", "src.app:create_app()"]

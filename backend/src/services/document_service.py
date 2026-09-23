@@ -104,13 +104,13 @@ class DocumentService:
             db.session.flush()  # Flush to get the created_at timestamp
             audit_logger.info("Document created successfully", extra={"audit": {
                             "id":uuid.uuid4(),
-                            "user_id": user_id,
+                            "actor_id": user_id,
                             "action": "UPLOAD",
                             "details": f"Document {document_id} created successfully.",
                             "target_id": document_id,
                             "target_resource": "Document",
                             "ip_address": extra_data.get("ip_address") if extra_data else None,
-                            "created_at": document.created_at.isoformat() if document.created_at else datetime.utcnow().isoformat()
+                            "created_at": document.date.isoformat() if document.date else datetime.utcnow().isoformat()
                         }})
             db.session.commit()
             return document
@@ -120,7 +120,7 @@ class DocumentService:
             raise
         except Exception as e:
             db.session.rollback()
-            raise AppError(f"Failed to create document: {str(e)}", 500) from e
+            raise 
 
     # ── Update ────────────────────────────────────────────────────────────────
 
@@ -152,11 +152,10 @@ class DocumentService:
         try:
             document = self.get_document_by_id(document_id)
             if not document:
-                raise AppError("Document not found", 404)
-
+                logging.warning(f"[document_service] Document with id={document_id} already deleted or not found in database.")
+                return
             db.session.delete(document)
             db.session.commit()
-
         except AppError:
             db.session.rollback()
             raise

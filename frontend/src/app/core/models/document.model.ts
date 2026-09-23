@@ -1,7 +1,7 @@
 export type DocumentStatus =
   | 'PENDING_UPLOAD'
   | 'PROCESSING'
-  | 'COMPLETED'
+  | 'ACTIVE/COMPLETED'
   | 'FAILED'
   | 'PENDING_DELETE';
 

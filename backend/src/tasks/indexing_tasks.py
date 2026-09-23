@@ -3,10 +3,11 @@ import tempfile
 
 import tempfile
 import os
+os.environ["NUMBA_CACHE_DIR"] = "/tmp/numba_cache"
+os.environ["NLTK_DATA"] = "/tmp/nltk_data"
+os.environ["HOME"] = "/tmp"
 from config.celery_app import celery_client
 from flask import current_app
-from helper.text_extractor import extract_text_from_pdf
-from helper.chunker import chunk_text
 from celery import shared_task
 from celery.utils.log import get_task_logger
 from services.vector_service import vector_service
@@ -19,7 +20,6 @@ from urllib.parse import urlparse
 
 celery = celery_client.get_app()
 logger = get_task_logger(__name__)
-
 
 # @celery.task(name="tasks.run_indexing_pipeline", bind=True)
 @shared_task(name="tasks.run_indexing_pipeline", bind=True)
@@ -86,6 +86,9 @@ def run_indexing_pipeline(
                     f"[indexing_tasks] Finished downloading blob for document_id={document_id} to temporary file {temp_file.name}"
                 )
                 # 2. Chunk the document via LangChain (10% overlap).
+                # Import inside the task execution block
+                from helper.text_extractor import extract_text_from_pdf
+                
                 pages_array = extract_text_from_pdf(temp_file.name)
             finally:
                 # Ensure the temporary file is deleted after processing
@@ -106,6 +109,7 @@ def run_indexing_pipeline(
             raise Exception(
                 f"No text extracted from document_id={document_id}. Cannot proceed with indexing."
             )
+        from helper.chunker import chunk_text
         chunks = chunk_text(pages_array, max_tokens=600, overlap_tokens=100)
         if not chunks:
             logger.warning(

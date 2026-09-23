@@ -24,3 +24,8 @@ class Chat(db.Model):
     conversations = relationship(
         "Conversation", back_populates="chat", cascade="all, delete-orphan"
     )
+
+    # Add index for user_id,created_at to optimize queries that filter by user_id and order by created_at
+    __table_args__ = (
+        db.Index("idx_user_id_created_at", "user_id", "created_at"),
+    )
