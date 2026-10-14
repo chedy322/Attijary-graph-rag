@@ -258,7 +258,7 @@ class VectorService:
                 return_metadata=MetadataQuery(score=True, explain_score=True),
             )
             if not results.objects:
-                return {"context": "No relevant text passages found.", "sources": [], "graph_context": []}
+                return {"context": "No relevant text passages found.", "sources": [], "graph_context": [], "hybrid_search_score": 0}
             # Filter to only return the chunks that the document ID is active in the DB
             doc_ids=list({
             str(obj.properties.get("document_id")) 
@@ -274,12 +274,26 @@ class VectorService:
             docs_maps = {str(doc.document_id): doc for doc in docs}
             sources = []
             text_passages = []
-
+            final_score=0
+            valid_results=[]
             for obj in results.objects:
                 props = obj.properties
                 doc_id = str(props.get("document_id"))
-                if doc_id not in docs_maps:
-                    continue  # Skip chunks from inactive documents
+                if doc_id in docs_maps:
+                    valid_results.append(obj)
+            if not valid_results:
+                return {"context": "No relevant text passages found.", "sources": [], "graph_context": [], "hybrid_search_score": 0}
+
+            # 2. Extract scores to find Min and Max boundaries
+            raw_scores = [getattr(obj.metadata, "score", 0.0) for obj in valid_results]
+            max_score = max(raw_scores)
+            min_score = min(raw_scores)
+            score_range = max_score - min_score
+            total_normalized_score = 0.0
+
+
+            for obj in valid_results:
+                props = obj.properties
                 text = props.get("text", "")
                 sources.append( 
                     {
@@ -294,10 +308,20 @@ class VectorService:
                 text_passages.append(
                     f"[Doc: {props.get('title')} | Page {props.get('page_number')}]\nExcerpt: \"{text}\""
                 )
-            # TO ADD :  Rreanker model
-            context_text = "### RETRIEVED TEXT PASSAGES\n" + "\n\n".join(text_passages)
 
-            return {"context": context_text, "sources": sources, "graph_context": []}
+                # Calculating the score for each document based on the retrieved score and normalizing it
+                raw_score = getattr(obj.metadata, "score", 0.0)
+                if score_range > 0:
+                    normalized_score = (raw_score - min_score) / score_range
+                else:
+                    normalized_score = 1.0  # If all documents have the exact same score
+                total_normalized_score += normalized_score
+
+                final_score+=getattr(obj.metadata, "score", 0)
+            # TO ADD :  Rreanker model
+            context_text = "RETRIEVED TEXT PASSAGES\n" + "\n\n".join(text_passages)
+
+            return {"context": context_text, "sources": sources, "graph_context": [],"hybrid_search_score":total_normalized_score/len(results.objects) if results.objects else 0}
 
         except VectorStoreError:
             raise

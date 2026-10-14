@@ -1,9 +1,15 @@
+# Fetch the user identity
+data "azurerm_user_assigned_identity" "bootstrap_identity" {
+  name                = var.management_identity_name
+  resource_group_name = var.bootstrap_resource_group_name
+}
+
 resource "azurerm_virtual_network" "vnet" {
   name                = var.virtual_network_name
   address_space       = ["10.0.0.0/16"]
   location            = var.resource_location
   resource_group_name = var.resource_group_name
-}
+} 
 
 
 # Configure the subnet to let the virtual network know about the subnet which lets the vm to communicate with the outside world
@@ -66,6 +72,21 @@ resource "azurerm_linux_virtual_machine" "vm" {
     username   = "azureadminstudent"
     public_key = var.admin_ssh_key
   }
+  
+   identity {
+    type         = "UserAssigned"
+    identity_ids = [data.azurerm_user_assigned_identity.bootstrap_identity.id]
+  }
+
+  custom_data = base64encode(<<-EOF
+              #!/bin/bash
+              fallocate -l 2G /swapfile
+              chmod 600 /swapfile
+              mkswap /swapfile
+              swapon /swapfile
+              echo '/swapfile none swap sw 0 0' >> /etc/fstab
+              EOF
+  )
 }
 
 
@@ -125,6 +146,8 @@ resource "azurerm_network_security_group" "nsg"{
     destination_address_prefix = "*"
   }
 }
+
+
 
 # Attach the firewall to the subnet
 resource "azurerm_subnet_network_security_group_association" "subnet_nsg_association" {

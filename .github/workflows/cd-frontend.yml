@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'frontend/**'
+      - '.github/workflows/cd-frontend.yml'
 
 concurrency:
   group: cd-frontend-production
@@ -18,10 +19,11 @@ jobs:
   build-frontend:
     uses: ./.github/workflows/docker-build-image.yml
     with:
-      dockerfile_path: 'frontend/Dockerfile'
+      dockerfile_path: 'Dockerfile'
       image_name: attijary-front-app
       push_image: true
       image_tag: 'prod'
+      context: 'frontend'
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}

@@ -1,4 +1,5 @@
 import os
+from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 
 
@@ -13,12 +14,18 @@ class AzureBlobClient:
 
     def get_client(self) -> BlobServiceClient:
         if self._client is None:
-            connection_string = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
-            if not connection_string:
+            account_name = os.getenv("AZURE_STORAGE_ACCOUNT_NAME")
+            if not account_name:
                 raise ValueError(
-                    "AZURE_STORAGE_CONNECTION_STRING environment variable is not set"
+                    "AZURE_STORAGE_ACCOUNT_NAME environment variable is not set"
                 )
-            self._client = BlobServiceClient.from_connection_string(connection_string)
+            account_url = f"https://{account_name}.blob.core.windows.net"
+            credential = DefaultAzureCredential()
+            
+            self._client = BlobServiceClient(
+                account_url=account_url, 
+                credential=credential
+            )
         return self._client
 
 

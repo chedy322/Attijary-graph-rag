@@ -20,6 +20,7 @@ class Conversation(db.Model):
         UUID(as_uuid=True),
         ForeignKey("chats.chat_id", ondelete="CASCADE"),
         nullable=False,
+        index=True
     )
     role = Column(Enum(ConversationRole, name="conversation_role"), nullable=False)
     content = Column(Text, nullable=False)

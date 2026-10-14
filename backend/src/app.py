@@ -11,6 +11,7 @@ from config.vector_db import weaviate_client
 from config.neo4j_db import neo4j_client
 from core.exceptions import register_error_handlers
 from core.middleware import require_auth, admin_required
+from config.secrets_config import SecretsAppConfig
 import logging
 load_dotenv(override=True)
 logger = logging.getLogger(__name__)
@@ -20,6 +21,12 @@ def create_app() -> Flask:
         level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
     )
     app = Flask(__name__)
+    if os.getenv("FLASK_ENV") == "production":
+        SecretsAppConfig.load_secrets_from_cloud_to_local(os.getenv("AZURE_PROD_KEY_VAULT_URI"))
+    elif os.getenv("FLASK_ENV") == "staging":
+        SecretsAppConfig.load_secrets_from_cloud_to_local(os.getenv("AZURE_STAGING_KEY_VAULT_URI"))
+    else:
+        logger.info("Loading secrets from local environment variables for development environment.")
     app.url_map.strict_slashes = False
 
     FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:4200")

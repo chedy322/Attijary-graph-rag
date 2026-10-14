@@ -63,3 +63,8 @@ opentelemetry-instrumentation-logging
 
 
 gunicorn
+
+langchain-openrouter
+
+azure-identity
+azure-keyvault-secrets

@@ -32,21 +32,46 @@ def handle_azure_exceptions(action_name: str):
 
 
 class StorageService:
+    # blobServiceClient = None
+    # containerClient = None
+    # accountName = None
+    # containerName = None
+
+    # def __init__(self):
+    #     """Initialize the StorageService with an AzureBlobClient instance."""
+    #     container_name = os.getenv("AZURE_BLOB_CONTAINER_NAME")
+    #     account_name = os.getenv("AZURE_STORAGE_ACCOUNT_NAME")
+    #     account_key = os.getenv("AZURE_STORAGE_ACCOUNT_KEY")
+    #     if not all([container_name, account_name, account_key]):
+    #         raise AppError(
+    #             "Azure storage configuration is incomplete. "
+    #             "Ensure AZURE_BLOB_CONTAINER_NAME, AZURE_STORAGE_ACCOUNT_NAME, "
+    #             "and AZURE_STORAGE_ACCOUNT_KEY are set.",
+    #             500,
+    #         )
+    #     self.blobServiceClient = azure_blob_client.get_client()
+    #     self.containerClient = self.blobServiceClient.get_container_client(
+    #         container_name
+    #     )
+    #     self.accountName = account_name
+    #     self.containerName = container_name
+    #     self.account_key = account_key
+
     blobServiceClient = None
     containerClient = None
     accountName = None
     containerName = None
 
     def __init__(self):
-        """Initialize the StorageService with an AzureBlobClient instance."""
+        """Initialize the StorageService without any master keys."""
         container_name = os.getenv("AZURE_BLOB_CONTAINER_NAME")
         account_name = os.getenv("AZURE_STORAGE_ACCOUNT_NAME")
-        account_key = os.getenv("AZURE_STORAGE_ACCOUNT_KEY")
-        if not all([container_name, account_name, account_key]):
+        
+        # No account_key needed anymore!
+        if not all([container_name, account_name]):
             raise AppError(
                 "Azure storage configuration is incomplete. "
-                "Ensure AZURE_BLOB_CONTAINER_NAME, AZURE_STORAGE_ACCOUNT_NAME, "
-                "and AZURE_STORAGE_ACCOUNT_KEY are set.",
+                "Ensure AZURE_BLOB_CONTAINER_NAME and AZURE_STORAGE_ACCOUNT_NAME are set.",
                 500,
             )
         self.blobServiceClient = azure_blob_client.get_client()
@@ -55,9 +80,8 @@ class StorageService:
         )
         self.accountName = account_name
         self.containerName = container_name
-        self.account_key = account_key
 
-    """Handles all Azure Blob Storage operations."""
+    # """Handles all Azure Blob Storage operations."""
 
     def calculate_file_path(self, userId, documentId, filename: str) -> str:
         # userId is from clerk_user_id and not the user_id form the db
@@ -67,37 +91,70 @@ class StorageService:
 
         return (blobName, fileUrl)
 
+    # @handle_azure_exceptions("generate_upload_sas")
+    # def generate_upload_sas(self, file_url: str) -> str:
+    #     """
+    #     Generate a pre-signed SAS URL granting WRITE access for 1 hour.
+    #     The frontend uploads the file directly to Azure using this URL.
+
+    #     Args:
+    #         file_path: The blob path inside the container, e.g. 'documents/<uuid>.pdf'
+
+    #     Returns:
+    #         A fully-qualified SAS URL string.
+    #     """
+    #     start_time = datetime.now(timezone.utc)- timedelta(minutes=15)  # Start time is 5 minutes in the past to account for clock skew
+    #     expire_time = start_time + timedelta(hours=1)
+
+    #     # FIX: Translated Node.js SAS generation into standard Python azure-storage-blob implementation
+    #     sas_token = generate_blob_sas(
+    #         account_name=self.accountName,
+    #         container_name=self.containerName,
+    #         blob_name=file_url,
+    #         account_key=self.account_key,
+    #         permission=BlobSasPermissions(write=True, create=True),
+    #         start=start_time,
+    #         expiry=expire_time,
+    #     )
+
+    #     # Construct the full URL with the generated SAS token
+    #     blob_client = self.containerClient.get_blob_client(blob=file_url)
+    #     sas_url = f"{blob_client.url}?{sas_token}"
+
+    #     return sas_url
+
     @handle_azure_exceptions("generate_upload_sas")
-    def generate_upload_sas(self, file_url: str) -> str:
+    def generate_upload_sas(self, blob_name: str) -> str:
         """
-        Generate a pre-signed SAS URL granting WRITE access for 1 hour.
-        The frontend uploads the file directly to Azure using this URL.
-
-        Args:
-            file_path: The blob path inside the container, e.g. 'documents/<uuid>.pdf'
-
-        Returns:
-            A fully-qualified SAS URL string.
+        Generate a User Delegation SAS URL granting WRITE access for 1 hour.
+        Uses Entra ID (Managed Identity) credentials to sign the token.
         """
-        start_time = datetime.now(timezone.utc)- timedelta(minutes=15)  # Start time is 5 minutes in the past to account for clock skew
+        start_time = datetime.now(timezone.utc) - timedelta(minutes=15) # Clock skew margin
         expire_time = start_time + timedelta(hours=1)
 
-        # FIX: Translated Node.js SAS generation into standard Python azure-storage-blob implementation
+        # 1. Request a User Delegation Key from Azure AD
+        user_delegation_key = self.blobServiceClient.get_user_delegation_key(
+            key_start_time=start_time,
+            key_expiry_time=expire_time
+        )
+
+        # 2. Generate Blob SAS using user_delegation_key (instead of account_key)
         sas_token = generate_blob_sas(
             account_name=self.accountName,
             container_name=self.containerName,
-            blob_name=file_url,
-            account_key=self.account_key,
+            blob_name=blob_name,
+            user_delegation_key=user_delegation_key,
             permission=BlobSasPermissions(write=True, create=True),
             start=start_time,
             expiry=expire_time,
         )
 
-        # Construct the full URL with the generated SAS token
-        blob_client = self.containerClient.get_blob_client(blob=file_url)
+        # 3. Construct the full SAS URL
+        blob_client = self.containerClient.get_blob_client(blob=blob_name)
         sas_url = f"{blob_client.url}?{sas_token}"
 
         return sas_url
+
        
     # Delete a document from Azure Blob Storage
     @handle_azure_exceptions("delete_document")

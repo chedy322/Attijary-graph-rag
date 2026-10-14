@@ -11,15 +11,15 @@ output "AZURE_BLOB_CONTAINER_NAME" {
 output "AZURE_STORAGE_ACCOUNT_KEY" {
   value       = module.storage_bucket.AZURE_STORAGE_ACCOUNT_KEY
   description = "Azure Storage Account Key"
-  sensitive   = true # Must match sensitive flag from module
+  sensitive   = true 
 }
 
 output "AZURE_STORAGE_CONNECTION_STRING" {
   value       = module.storage_bucket.AZURE_STORAGE_CONNECTION_STRING
   description = "Azure Storage Connection String"
-  sensitive   = true # Must match sensitive flag from module
+  sensitive   = true 
 }
 
-# output "public_ip_address" {
-#   value = module.virtual_machine.public_ip_address
-# }
+output "public_ip_address" {
+  value = module.virtual_machine.public_ip_address
+}

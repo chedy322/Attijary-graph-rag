@@ -8,6 +8,10 @@ on:
         type: string
         default: 'python'
         description: 'Languages to analyze (comma-separated list)'
+      scan-path:
+        required: true
+        type: string
+        description: 'Path to scan for CodeQL analysis'
 
 jobs:
   codeql-analysis:
@@ -22,6 +26,9 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: ${{ inputs.languages }}
+          config: |
+            paths:
+              - ${{ inputs.scan-path }}
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3

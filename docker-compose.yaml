@@ -1,28 +1,28 @@
 name: Services for Graph RAG
 
 services:
-  redis:
-    image: redis:alpine
-    container_name: redis_app
-    # ports:
-    #   - "6379:6379"
-    restart: unless-stopped
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-    networks:
-      - backend_network
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 384M
-        reservations:
-          memory: 128M
+  # redis:
+  #   image: redis:alpine
+  #   container_name: redis_app
+  #   # ports:
+  #   #   - "6379:6379"
+  #   restart: unless-stopped
+  #   volumes:
+  #     - redis_data:/data
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 5s
+  #     timeout: 3s
+  #     retries: 5
+  #   networks:
+  #     - backend_network
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '0.5'
+  #         memory: 384M
+  #       reservations:
+  #         memory: 128M
   frontend:
     build:
       context: ./frontend
@@ -52,14 +52,13 @@ services:
     networks:
       - backend_network
       - frontend_network
+    volumes:
+      - ${USERPROFILE}/.azure:/root/.azure:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/healthz/ready"]
       interval: 10s
       timeout: 5s
       retries: 5
-    depends_on:
-      redis:
-        condition: service_healthy
     deploy:
       resources:
         limits:
@@ -81,9 +80,9 @@ services:
       - backend_network
     env_file:
       - ./backend/.env
+    volumes:
+      - ${USERPROFILE}/.azure:/root/.azure:ro
     depends_on:
-      redis:
-        condition: service_healthy
       backend:
         condition: service_started
     deploy:

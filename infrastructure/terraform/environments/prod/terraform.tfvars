@@ -1,0 +1,8 @@
+# resource_group_name = "graphragstudentrg"
+resource_location   = "centralindia"
+storage_resource_name       = "grapghragestudentstorage"
+prod_resource_group_name= "my-prod-rg"
+bootstrap_resource_group_name="my-bootstrap-rg"
+terraform_state_storage_account_name="attijarymystatestorage7"
+terraform_state_prod_container_name="mytfstatecontainer"
+management_identity_name="id-application-identity"

@@ -16,7 +16,7 @@ jobs:
     uses: ./.github/workflows/reusable-secret-scanning.yml
     secrets:
       GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Run dependency scanning
   dependency-scanning:
@@ -27,3 +27,17 @@ jobs:
     uses: ./.github/workflows/reusable-codeQl-scanning.yml
     with:
       languages: 'python'
+      scan-path: 'backend'
+  
+  # Run Docker build and scan without deploying to registry
+  docker-build-and-scan:
+    uses: ./.github/workflows/docker-build-image.yml
+    with:
+      image_name: 'graphRag-backend'
+      image_tag: 'latest'
+      dockerfile_path: 'Dockerfile'
+      context: 'backend'
+      push_image: false
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}

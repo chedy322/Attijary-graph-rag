@@ -519,8 +519,8 @@ class GraphService:
 
             # Combine into LLM context text
             formatted_facts = [g["graph_path"] for g in graph_context]
-            context_text = "### GRAPH FACTS\n" + "\n".join(formatted_facts)
-            context_text += "\n\n### RETRIEVED EXCERPTS\n" + "\n\n".join(text_passages)
+            context_text = "GRAPH FACTS\n" + "\n".join(formatted_facts)
+            context_text += "\n\nRETRIEVED EXCERPTS\n" + "\n\n".join(text_passages)
 
             return {
                 "context": context_text,

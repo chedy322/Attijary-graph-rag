@@ -1,0 +1,67 @@
+flowchart LR
+    api[Flask API]
+    redis[(Redis Broker)]
+
+    subgraph queues[Celery Queues]
+        indexing[Document Indexing Queue]
+        deletion[Document Deletion Queue]
+        audit[Audit Log Queue]
+    end
+
+    subgraph workers[Celery Workers]
+        index_worker[Indexing Worker]
+        delete_worker[Deletion Worker]
+        audit_worker[Audit Worker]
+    end
+
+    subgraph services[External Services]
+        storage[Azure Blob Storage]
+        vector[Weaviate Cloud]
+        graph_db[Neo4j Cloud]
+        database[(Supabase PostgreSQL)]
+        llm[Google Gemini API]
+    end
+
+    api -->|Enqueue task| redis
+    redis --> indexing
+    redis --> deletion
+    redis --> audit
+    indexing --> index_worker
+    deletion --> delete_worker
+    audit --> audit_worker
+
+    index_worker --> storage
+    index_worker --> vector
+    index_worker --> graph_db
+    index_worker --> database
+    index_worker --> llm
+    delete_worker --> storage
+    delete_worker --> vector
+    delete_worker --> graph_db
+    delete_worker --> database
+    audit_worker --> database
+
+    subgraph lifecycle[Task Lifecycle]
+        queued[QUEUED] --> running[RUNNING]
+        running --> completed[COMPLETED]
+        running --> failed[FAILED]
+        running --> cancelled[CANCELLED]
+    end
+
+    redis -.->|Initial state| queued
+    index_worker -.->|Updates state| running
+    index_worker -.->|Success| completed
+    index_worker -.->|Error or retry limit| failed
+    index_worker -.->|Cancellation requested| cancelled
+
+    classDef apiStyle fill:#dbeafe,stroke:#2563eb,color:#172554
+    classDef queueStyle fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef workerStyle fill:#dcfce7,stroke:#16a34a,color:#14532d
+    classDef serviceStyle fill:#f3e8ff,stroke:#9333ea,color:#581c87
+    classDef stateStyle fill:#f1f5f9,stroke:#475569,color:#1e293b
+
+    class api apiStyle
+    class redis,indexing,deletion,audit queueStyle
+    class index_worker,delete_worker,audit_worker workerStyle
+    class storage,vector,graph_db,database,llm serviceStyle
+    class queued,running,completed,failed,cancelled stateStyle

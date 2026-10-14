@@ -1,0 +1,50 @@
+name: Services for Graph RAG
+
+services:   
+  backend:
+    image: ${IMAGE_NAME}
+    container_name: staging-graphRag-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    networks:
+      - backend_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/healthz/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1250M
+        reservations:
+          memory: 512M
+
+  celery_worker:
+    image: ${IMAGE_NAME}
+    restart: unless-stopped
+    container_name: staging-graphRag-celery
+    # Overrides the default CMD in Dockerfile
+    command: ["opentelemetry-instrument",
+              "--logs_exporter", 
+              "otlp","celery", "-A",
+               "celery_worker.celery_app", "worker", "--concurrency=2", "--loglevel=info"]
+    networks:
+      - backend_network
+    depends_on:
+      backend:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1500M
+        reservations:
+          memory: 512M
+
+
+
+networks:
+  backend_network:

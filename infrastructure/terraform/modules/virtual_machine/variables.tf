@@ -9,3 +9,5 @@ variable "network_interface_name" { type = string }
 variable "virtual_machine_name"   { type = string }
 variable "admin_ssh_key"         { type = string }
 variable "network_security_group_name" { type = string }
+variable "management_identity_name" { type = string }
+variable "bootstrap_resource_group_name" { type = string }

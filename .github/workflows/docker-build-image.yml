@@ -26,6 +26,10 @@ on:
         type: boolean
         default: false
         description: Whether to push the built image to the container registry
+      context:
+        required: true
+        type: string
+        description: Context for the Docker build
     secrets:
       DOCKER_USERNAME:
         required: true
@@ -51,10 +55,11 @@ jobs:
       - name: Build Docker image locally
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ${{ inputs.context }}
           file: ${{ inputs.dockerfile_path }}
+          # Keep the image local until Trivy succeeds.
           push: false
-          load: ${{ !inputs.push_image }}
+          load: true
           build-args: ${{ inputs.build_args }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

@@ -1,0 +1,50 @@
+sequenceDiagram
+    autonumber
+    actor Admin
+    participant Angular as Angular Frontend
+    participant API as Flask API
+    participant PostgreSQL as PostgreSQL
+    participant Blob as Azure Blob Storage
+    participant Redis as Redis Broker
+    participant Worker as Celery Indexing Worker
+    participant Extractor as Text Extractor
+    participant Chunker as Chunking Service
+    participant Embeddings as Gemini Embedding Model
+    participant Weaviate as Weaviate Vector Database
+    participant Graph as Graph Extraction Service
+    participant Neo4j as Neo4j Graph Database
+
+    Admin->>Angular: Start document upload
+    Angular->>API: POST /api/v1/documents/upload-url
+    API->>PostgreSQL: Create document with PENDING_UPLOAD status
+    PostgreSQL-->>API: Document record
+    API->>Blob: Generate upload SAS URL
+    Blob-->>API: SAS upload URL
+    API-->>Angular: Return document metadata and upload URL
+    Angular->>Blob: Upload document file
+    Blob-->>Angular: Upload completed
+
+    Admin->>Angular: Start document indexing
+    Angular->>API: POST /api/v1/documents/{id}/index
+    API->>PostgreSQL: Set status to PROCESSING
+    API->>Redis: Enqueue indexing task
+    Redis-->>API: Task identifier
+    API-->>Angular: Return 202 and task identifier
+
+    Redis->>Worker: Deliver indexing task
+    Worker->>Blob: Download document
+    Blob-->>Worker: Document file
+    Worker->>Extractor: Extract text and pages
+    Extractor-->>Worker: Page text
+    Worker->>Chunker: Split text into chunks
+    Chunker-->>Worker: Document chunks
+    Worker->>Embeddings: Generate embeddings in batches
+    Embeddings-->>Worker: Chunk vectors
+    Worker->>Weaviate: Store vectors and chunk metadata
+    Weaviate-->>Worker: Vector index confirmed
+    Worker->>Graph: Extract entities and relationships
+    Graph-->>Worker: Graph nodes and edges
+    Worker->>Neo4j: Store graph data
+    Neo4j-->>Worker: Graph index confirmed
+    Worker->>PostgreSQL: Set status to ACTIVE_COMPLETED
+    PostgreSQL-->>Worker: Status committed
