@@ -139,9 +139,9 @@ def create_app() -> Flask:
             # Check the clerk connection
             # Check the redis connection
             # check the llm connection
-        except Exception as e:
-            logger.error(f"Readiness check failed: {e}")
-            return jsonify({"status": "unhealthy", "error": str(e)}), 503
+        except Exception:
+            logger.exception("Readiness check failed")
+            return jsonify({"status": "unhealthy", "error": "Service temporarily unavailable"}), 503
     @app.route("/api/v1/protected-route-test", methods=["GET"])
     @require_auth
     def protected_test():
