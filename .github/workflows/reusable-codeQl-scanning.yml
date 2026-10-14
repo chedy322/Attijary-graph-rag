@@ -1,27 +1,34 @@
+name: Reusable CodeQL Analysis
+
 on:
-    workflow_call:
-        inputs:
-            languages:
-                required: false
-                type: string
-                default: 'python'
-                description: 'Languages to analyze (comma-separated list)'
+  workflow_call:
+    inputs:
+      languages:
+        required: false
+        type: string
+        default: 'python'
+        description: 'Languages to analyze (comma-separated list)'
+      scan-path:
+        required: true
+        type: string
+        description: 'Path to scan for CodeQL analysis'
 
 jobs:
-    codeql-analysis:
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
-              with:
-                fetch-depth: 0 # Fetch all history for all branches and tags
+  codeql-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-            - name: Initialize CodeQL
-              uses: github/codeql-action/init@v3
-              with:
-                languages: ${{ inputs.languages }}
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ inputs.languages }}
+          config: |
+            paths:
+              - ${{ inputs.scan-path }}
 
-
-
-            - name: Perform CodeQL Analysis
-              uses: github/codeql-action/analyze@v3
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3

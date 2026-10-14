@@ -12,8 +12,26 @@ concurrency:
 # Run ,depandabot bot,secret scanning ,unit test ,Intergration test,security test
 jobs:
 
+  secret-scanning:
+    uses: ./.github/workflows/reusable-secret-scanning.yml
+    secrets:
+      GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   # Run Security test
   codeql-analysis:
-    uses: ./.github/workflows/reusable-codeql-analysis.yml
+    uses: ./.github/workflows/reusable-codeQl-scanning.yml
     with:
       languages: 'javascript-typescript'
+      scan-path: 'frontend'
+  # Run Docker build and scan without deploying to registry
+  docker-build-and-scan:
+    uses: ./.github/workflows/docker-build-image.yml
+    with:
+      image_name: 'graphRag-frontend'
+      image_tag: 'latest'
+      dockerfile_path: 'Dockerfile'
+      context: 'frontend'
+      push_image: false
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}

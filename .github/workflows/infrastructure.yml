@@ -6,15 +6,24 @@ on:
       - main
     paths:
       - 'infrastructure/**'
+      - '.github/workflows/infrastructure.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'infrastructure/**'
+      - '.github/workflows/infrastructure.yml'
+
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
   infrastructure-ci:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: true
     defaults:
       run:
-        working-directory: ./infrastructure/environments/prod
+        working-directory: ./infrastructure/terraform/environments/prod
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -46,16 +55,73 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'config'
-          scan-ref: './infrastructure/environments/prod'
+          scan-ref: './infrastructure/terraform/environments/prod'
           exit-code: '1'
           hide-progress: false
           format: 'sarif'
 
       - name: Plan Terraform Changes
+        env:
+          TF_VAR_admin_ssh_key: ${{ secrets.PRODUCTION_ENVIRONMENT_ADMIN_SSH_KEY }}
         run: terraform plan -out=tfplan
 
+        # Upload the Terraform plan as an artifact for later check
       - name: Upload Terraform Plan
         uses: actions/upload-artifact@v4
         with:
           name: tfplan
-          path: infrastructure/environments/prod/tfplan
+          path: infrastructure/terraform/environments/prod/tfplan
+
+  infrastructure-cd:
+    runs-on: ubuntu-latest
+    needs: infrastructure-ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Environment production should have user approval before starting the  deployment job.
+    environment: production
+    defaults:
+        run:
+            working-directory: ./infrastructure/terraform/environments/prod
+    steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+
+        -   name: Log in to Azure
+            uses: azure/login@v2
+            with:
+                client-id: ${{ secrets.AZURE_CLIENT_ID }}
+                tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+                subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+        -  name: Set up Terraform
+           uses: hashicorp/setup-terraform@v3
+           with:
+                terraform_version: 1.6.0
+
+        -  name: Terraform Format
+           run: terraform fmt -check -recursive
+
+        -   name: Terraform Init
+            run: terraform init
+
+        -   name: Terraform Validate
+            run: terraform validate
+
+        -   name: Run Security Scan (Trivy)
+            uses: aquasecurity/trivy-action@master
+            with:
+                scan-type: 'config'
+                scan-ref: './infrastructure/terraform/environments/prod'
+                exit-code: '1'
+
+        -   name: Download approved Terraform plan
+            uses: actions/download-artifact@v4
+            with:
+                name: tfplan
+                path: infrastructure/terraform/environments/prod
+
+        -   name: Apply approved Terraform plan
+            env:
+                TF_VAR_admin_ssh_key: ${{ secrets.PRODUCTION_ENVIRONMENT_ADMIN_SSH_KEY }}
+            run: terraform apply -auto-approve tfplan

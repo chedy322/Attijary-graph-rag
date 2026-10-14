@@ -1,29 +1,43 @@
-# Run on every pull request on every branch
+# Run on every pull request targeting main when files in backend change
 on:
   pull_request:
-      branches:
-        - main
-      paths:
-        - 'backend/**'
+    branches:
+      - main
+    paths:
+      - 'backend/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-# Run ,depandabot bot,secret scanning ,unit test ,Intergration test,security test
-jobs:
 
+jobs:
   # Run secret scanning
   secret-scanning:
     uses: ./.github/workflows/reusable-secret-scanning.yml
     secrets:
       GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  # Run dependecy scanning
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Run dependency scanning
   dependency-scanning:
     uses: ./.github/workflows/reusable-dependency-scanning.yml
 
   # Run Security test
   codeql-analysis:
-    uses: ./.github/workflows/reusable-codeql-analysis.yml
+    uses: ./.github/workflows/reusable-codeQl-scanning.yml
     with:
       languages: 'python'
+      scan-path: 'backend'
+  
+  # Run Docker build and scan without deploying to registry
+  docker-build-and-scan:
+    uses: ./.github/workflows/docker-build-image.yml
+    with:
+      image_name: 'graphRag-backend'
+      image_tag: 'latest'
+      dockerfile_path: 'Dockerfile'
+      context: 'backend'
+      push_image: false
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}

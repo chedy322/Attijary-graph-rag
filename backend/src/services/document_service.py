@@ -1,14 +1,15 @@
 # backend/services/document_service.py
 import uuid
 from datetime import datetime, timezone
-from typing import Optional, Tuple, List
+from typing import Any, Dict, Optional, Tuple, List
 
 from models.user import User
 
 from config.database import db
 from core.exceptions import AppError
 from models.document import Document, DocumentStatus, DocumentOrigin
-
+import logging
+audit_logger = logging.getLogger("audit")
 
 class DocumentService:
     """CRUD + business logic for the Document entity."""
@@ -69,6 +70,7 @@ class DocumentService:
         uploaded_by_user_id: Optional[str] = None,
         number: Optional[str] = None,
         category: Optional[str] = None,
+        extra_data: Optional[Dict[str,Any]] = None,
     ) -> Document:
         """
         Insert a new Document row with status PENDING_UPLOAD.
@@ -98,8 +100,18 @@ class DocumentService:
                 origin=DocumentOrigin.MANUAL,
                 uploaded_by_user_id=user_id,
             )
-
             db.session.add(document)
+            db.session.flush()  # Flush to get the created_at timestamp
+            audit_logger.info("Document created successfully", extra={"audit": {
+                            "id":uuid.uuid4(),
+                            "actor_id": user_id,
+                            "action": "UPLOAD",
+                            "details": f"Document {document_id} created successfully.",
+                            "target_id": document_id,
+                            "target_resource": "Document",
+                            "ip_address": extra_data.get("ip_address") if extra_data else None,
+                            "created_at": document.date.isoformat() if document.date else datetime.utcnow().isoformat()
+                        }})
             db.session.commit()
             return document
 
@@ -108,7 +120,7 @@ class DocumentService:
             raise
         except Exception as e:
             db.session.rollback()
-            raise AppError(f"Failed to create document: {str(e)}", 500) from e
+            raise 
 
     # ── Update ────────────────────────────────────────────────────────────────
 
@@ -134,6 +146,22 @@ class DocumentService:
         except Exception as e:
             db.session.rollback()
             raise AppError(f"Failed to update document status: {str(e)}", 500) from e
+
+    def delete_document(self, document_id) -> None:
+        """Delete a document by its UUID primary key."""
+        try:
+            document = self.get_document_by_id(document_id)
+            if not document:
+                logging.warning(f"[document_service] Document with id={document_id} already deleted or not found in database.")
+                return
+            db.session.delete(document)
+            db.session.commit()
+        except AppError:
+            db.session.rollback()
+            raise
+        except Exception as e:
+            db.session.rollback()
+            raise AppError(f"Failed to delete document: {str(e)}", 500) from e
 
 
 document_service = DocumentService()

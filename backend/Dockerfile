@@ -9,17 +9,18 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 RUN python -m venv /venv
 ENV PATH="/venv/bin:$PATH"
 
-# Install Python packages into /venv with uv cache
+# Install Python packages into /venv with uv cache AND compile bytecode
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=requirements.txt,target=requirements.txt \
     uv pip install --compile-bytecode -r requirements.txt
-
+# 2. Install auto-instrumentation drivers (Flask, SQLAlchemy, Requests, etc.)
+RUN opentelemetry-bootstrap --action=install
 
 # Stage 2: Final runtime stage
 FROM python:3.12-slim AS final
 WORKDIR /app
 
-# 1. FIX POPPLER ERROR: Install poppler-utils in the final container
+# Install system libraries via apt-get
 RUN apt-get update && apt-get install -y --no-install-recommends \
     poppler-utils \
     tesseract-ocr \
@@ -27,12 +28,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libmagic1 \
     libgl1 \
     libglib2.0-0 \
-    && rm -rf /var/lib/apt-get/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
 RUN addgroup --system appgroup && adduser --system --group appuser
 
-# 2. Copy the populated virtual environment from build stage
+# Copy the populated virtual environment from build stage
 COPY --from=base /venv /venv
 ENV PATH="/venv/bin:$PATH"
 
@@ -45,4 +46,6 @@ ENV FLASK_APP=src/app.py
 USER appuser
 EXPOSE 5000
 
-CMD ["flask", "run", "--host=0.0.0.0"]
+# CMD ["opentelemetry-instrument","flask", "run", "--host=0.0.0.0", "--port=5000"]
+
+CMD ["opentelemetry-instrument", "gunicorn", "--workers", "1","--threads", "3", "-b", "0.0.0.0:5000", "--timeout", "120", "src.app:create_app()"]

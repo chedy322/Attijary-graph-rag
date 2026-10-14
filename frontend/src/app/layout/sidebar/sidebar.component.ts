@@ -1,13 +1,7 @@
-import {
-  Component,
-  Input,
-  Output,
-  EventEmitter,
-  inject,
-  OnInit,
-} from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { Router } from '@angular/router';
 import { UserRole } from '../../core/models';
 import { AuthService } from '../../core/services';
 
@@ -16,6 +10,7 @@ interface MenuItem {
   route: string;
   icon: string;
   category?: string;
+  adminOnly?: boolean;
 }
 
 @Component({
@@ -25,84 +20,59 @@ interface MenuItem {
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss',
 })
-export class SidebarComponent implements OnInit {
-  private authService = inject(AuthService);
+export class SidebarComponent {
+  protected authService = inject(AuthService);
+  private router = inject(Router);
 
-  @Input() userRole: UserRole = 'ADMIN';
+  @Input() userRole: UserRole | null = null;
   @Input() isCollapsed = false;
-  @Output() roleChange = new EventEmitter<UserRole>();
+  @Input() mobileOpen = false;
   @Output() toggleCollapse = new EventEmitter<void>();
-
-  currentUser = {
-    firstname: 'Admin',
-    lastname: 'User',
-    email: 'admin@centralbank.int',
-    role: 'ADMIN' as UserRole,
-  };
+  @Output() closeMobileSidebar = new EventEmitter<void>();
 
   adminMenuItems: MenuItem[] = [
-    {
-      label: 'Dashboard',
-      route: '/dashboard',
-      icon: 'grid',
-      category: 'ADMINISTRATION',
-    },
-    { label: 'Documents', route: '/documents', icon: 'file-text' },
-    { label: 'Ingestion Pipeline', route: '/dashboard', icon: 'cpu' },
-    { label: 'Web Scrapers', route: '/scrapers', icon: 'globe' },
-    { label: 'Graph Explorer', route: '/graph', icon: 'share-2' },
-    { label: 'Users & Roles', route: '/users', icon: 'users' },
-    { label: 'Audit Logs', route: '/audit', icon: 'shield' },
-    { label: 'System Settings', route: '/settings', icon: 'settings' },
+    { label: 'Chat', route: '/chat', icon: 'message-square' },
+    { label: 'Documents', route: '/documents', icon: 'file-text', adminOnly: true },
+    { label: 'Web Scrapers', route: '/scrapers', icon: 'globe', adminOnly: true },
+    { label: 'Graph Explorer', route: '/graph', icon: 'share-2', adminOnly: true },
+    { label: 'Users & Roles', route: '/users', icon: 'users', adminOnly: true },
+    { label: 'Audit Logs', route: '/audit', icon: 'shield', adminOnly: true },
+    { label: 'System Settings', route: '/settings', icon: 'settings', adminOnly: true },
   ];
 
   userMenuItems: MenuItem[] = [
     { label: 'Chat', route: '/chat', icon: 'message-square' },
-    { label: 'Documents', route: '/documents', icon: 'file-text' },
-    { label: 'Regulations', route: '/regulations', icon: 'book' },
-    { label: 'Graph Explorer', route: '/graph', icon: 'share-2' },
-    { label: 'Analytics', route: '/analytics', icon: 'bar-chart' },
-    { label: 'Bookmarks', route: '/bookmarks', icon: 'bookmark' },
-    { label: 'Alerts', route: '/alerts', icon: 'bell' },
-    { label: 'Settings', route: '/settings', icon: 'settings' },
   ];
 
-  ngOnInit(): void {
-    const userProfile = this.authService.currentUser();
-    if (userProfile) {
-      this.currentUser = {
-        firstname: userProfile.firstname,
-        lastname: userProfile.lastname,
-        email: userProfile.email,
-        role: userProfile.role,
-      };
-      this.userRole = userProfile.role;
-    } else {
-      this.currentUser.role = this.userRole;
-    }
+  get currentUser() {
+    return this.authService.currentUser();
   }
 
   get menuItems(): MenuItem[] {
-    return this.userRole === 'ADMIN' ? this.adminMenuItems : this.userMenuItems;
+    return this.authService.isAdmin() ? this.adminMenuItems : this.userMenuItems;
   }
 
-  switchRole(role: UserRole): void {
-    this.userRole = role;
-    this.currentUser.role = role;
-    if (role === 'USER') {
-      this.currentUser.firstname = 'Michael';
-      this.currentUser.lastname = 'Anderson';
-      this.currentUser.email = 'michael.anderson@cbank.int';
-    } else {
-      this.currentUser.firstname = 'Admin';
-      this.currentUser.lastname = 'User';
-      this.currentUser.email = 'admin@centralbank.int';
-    }
-    this.roleChange.emit(role);
+  get isAdmin(): boolean {
+    return this.authService.isAdmin();
+  }
+
+  get userInitials(): string {
+    const firstname = this.currentUser?.firstname?.trim() || '';
+    const lastname = this.currentUser?.lastname?.trim() || '';
+    return `${firstname.charAt(0)}${lastname.charAt(0)}`.toUpperCase();
   }
 
   onToggleCollapse(): void {
     this.isCollapsed = !this.isCollapsed;
     this.toggleCollapse.emit();
+  }
+
+  onSignOut(): void {
+    this.authService.logout();
+    void this.router.navigate(['/sign-in']);
+  }
+
+  onNavigation(): void {
+    this.closeMobileSidebar.emit();
   }
 }

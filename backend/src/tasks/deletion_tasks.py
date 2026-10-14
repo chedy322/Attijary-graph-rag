@@ -1,11 +1,24 @@
 # backend/tasks/deletion_tasks.py
+from celery import shared_task
+
 from config.celery_app import celery_client
-
+import logging
+from services.document_service import document_service
+from services.vector_service import vector_service
+from services.graph_service import graph_service
+from services.storage_service import storage_service
+from config.database import db
+from models.document import Document
 celery = celery_client.get_app()
+logger = logging.getLogger(__name__)
 
-
-@celery.task(name="tasks.run_cascading_deletion", bind=True)
+# IMPLIMENTATION LOGIC : NON BLOCKING TASKS FOR CASCADING DELETION OF DOCUMENT DATA WITH IDEMPOTENCY AND SWALLOWING OF ERRORS
+# TOADD: Targeted Retries via State Tracking WITH BACKGROUND JOBS 
+@shared_task(name="tasks.run_cascading_deletion", bind=True,
+             max_retries=3, default_retry_delay=60,
+             autoretry_for=(Exception,), retry_backoff=True, retry_jitter=True)
 def run_cascading_deletion(self, document_id: str):
+
     """
     Celery task: Idempotent cascading deletion of all document data.
 
@@ -18,7 +31,75 @@ def run_cascading_deletion(self, document_id: str):
     Args:
         document_id: UUID string of the document to delete.
     """
-    # TODO: implement cascading deletion
-    print(
-        f"[deletion_tasks] run_cascading_deletion triggered for document_id={document_id}"
-    )
+   
+    # logger.info(
+    #     f"[deletion_tasks] run_cascading_deletion triggered for document_id={document_id}"
+    # )
+    #     # First query the database to get the document's file_path before deletion
+    # document=document_service.get_document_by_id(document_id)
+    # if not document:
+    #     logger.warning(
+    #         f"[deletion_tasks] Document with id={document_id} not found in database.Failure to delete document."
+    #     )
+    #     return {
+    #         "status": "warning",
+    #         "message": f"Document with id={document_id} not found in database.Failed to delete document.",
+    #     }
+    # file_path = document.file_path
+    # # Fetch all the chunks associated with the document_id from weviate to pass them to the graph service for deletion
+    # try:
+    #     chunk_ids = vector_service.get_chunks_by_document_id(document_id)
+
+    #     # Delete all nodes/edges from Neo4j for this document_id
+    #     if chunk_ids:
+    #         graph_service.delete_by_chunk_ids(chunk_ids)
+    # except Exception as e:
+    #     logger.error(f"[deletion_tasks] Error deleting nodes/edges from Neo4j: {str(e)}")
+    #     # Continue with the deletion process even if graph deletion fails
+
+    # # Delete all vectors from Weaviate for this document_id
+    # try:        
+    #     vector_service.delete_document_chunks(document_id)
+    # except Exception as e:
+    #     logger.error(f"[deletion_tasks] Error deleting vectors from Weaviate: {str(e)}")
+    #     # Continue with the deletion process even if vector deletion fails
+
+    # # Delete the blob from Azure Storage
+    # if file_path:
+    #     try:
+    #         storage_service.delete_document(file_path)
+    #     except Exception as e:
+    #         logger.error(f"[deletion_tasks] Error deleting document from Azure Storage: {str(e)}")
+    #         # Continue with the deletion process even if Azure Storage deletion fails
+
+    # # Hard-delete the Postgres document row last
+    # document_service.delete_document(document_id)
+    # logger.info(f"[deletion_tasks] Successfully completed deletion for document_id={document_id}")
+
+    logger.info(f"[deletion_tasks] Running cascading deletion for document_id={document_id}")
+
+    document = document_service.get_document_by_id(document_id)
+    if not document:
+        logger.warning(f"[deletion_tasks] Document id={document_id} not found. Skipping.")
+        return {"status": "not_found", "document_id": document_id}
+
+    file_path = document.file_path
+
+    chunk_ids = vector_service.get_chunks_by_document_id(document_id)
+    if chunk_ids:
+        graph_service.delete_by_chunk_ids(chunk_ids)
+
+    vector_service.delete_document_chunks(document_id)
+
+    if file_path:
+        storage_service.delete_document(file_path)
+
+    document_service.delete_document(document_id)
+
+    logger.info(f"[deletion_tasks] Successfully completed deletion for document_id={document_id}")
+    return {
+        "status": "success",
+        "message": f"Successfully completed deletion for document_id={document_id}",
+        "document_id": document_id,
+    }
+

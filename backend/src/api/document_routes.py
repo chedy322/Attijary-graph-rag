@@ -70,6 +70,9 @@ def get_upload_url():
         uploaded_by_user_id=clerk_user_id,
         number=number,
         category=category,
+        extra_data={
+            "ip_address": request.remote_addr,
+        }
     )
 
     sas_url = storage_service.generate_upload_sas(azure_blob_path)
@@ -134,7 +137,6 @@ def index_document(document_id):
 # ── GET /<document_id> ────────────────────────────────────────────────────────
 @document_bp.route("/<uuid:document_id>", methods=["GET"])
 @require_auth
-@admin_required
 def get_document(document_id):
     """Fetch a single document by UUID."""
     if g.get(
@@ -164,9 +166,15 @@ def delete_document(document_id):
     document = document_service.get_document_by_id(document_id)
     if not document:
         raise AppError("Document not found", 404)
-
+    if document.status == DocumentStatus.PENDING_DELETE:
+        return jsonify(
+            {
+                "status": "skipped",
+                "message": f"Document '{document_id}' is already marked for deletion.",
+                "document_id": str(document_id),
+            }
+        ), 200
     document_service.update_status(document_id, "PENDING_DELETE")
-
     task = run_cascading_deletion.delay(str(document_id))
 
     return jsonify(

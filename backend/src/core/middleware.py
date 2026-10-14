@@ -9,12 +9,24 @@ from core.exceptions import AppError
 IS_PROD = os.getenv("FLASK_ENV") == "production"
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
-DEFAULT_ORIGINS = [FRONTEND_URL] if IS_PROD else ["http://localhost:3000"]
+DEFAULT_ORIGINS = (
+    [FRONTEND_URL]
+    if IS_PROD
+    else ["http://localhost:4200", "http://localhost:3000"]
+)
 
 
 def authentication_middleware(f):
     @wraps(f)
     def decorated(*args, **kwargs):
+        if request.method == "OPTIONS":
+            response = jsonify({"status": "OK"})
+            origin = request.headers.get("Origin", "*")
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, Access-Control-Allow-Headers, X-Requested-With, Accept"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            return response, 200
         if not IS_PROD:
             # In development, we can mock the user_id for testing purposes
             g.user_id = "user_3HUeuQ21EH4OGF2FdwqhqX4qMrH"

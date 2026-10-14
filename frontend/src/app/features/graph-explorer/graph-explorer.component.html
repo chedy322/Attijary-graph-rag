@@ -69,7 +69,7 @@
         </div>
 
         <!-- Central Node Diagram Layout -->
-        <div class="graph-nodes-network">
+        <div class="graph-nodes-network static-graph">
           <!-- Central Root Node -->
           <div class="graph-node root-node" (click)="selectNode('cb-circ-2026-05', 'Circular N° 2026-05')">
             <div class="node-glow"></div>
@@ -133,6 +133,34 @@
           </div>
         </div>
 
+        @if (isLoading) {
+          <div class="graph-state">Loading graph lineage...</div>
+        } @else if (errorMessage) {
+          <div class="graph-state error">{{ errorMessage }}</div>
+        } @else if (graphData && graphData.nodes.length > 0) {
+          <div class="graph-nodes-network api-graph-network">
+            @for (node of graphData.nodes; track node.id; let i = $index) {
+              <div
+                class="graph-node"
+                [class.root-node]="node.id === graphData.root_document_id"
+                [ngClass]="node.id === graphData.root_document_id ? 'root-node' : getNodePosition(i)"
+                (click)="selectNode(node)"
+              >
+                @if (node.id === graphData.root_document_id) {
+                  <div class="node-glow"></div>
+                }
+                <div class="node-circle" [class.blue-gradient]="node.id === graphData.root_document_id" [class.blue-circle]="node.id !== graphData.root_document_id">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2-2V8z"/></svg>
+                </div>
+                <span class="node-title">{{ node.label }}</span>
+                <span class="node-subtitle">{{ node.type }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="graph-state">No graph lineage is available for this document.</div>
+        }
+
         <!-- Legend Card -->
         <div class="legend-card">
           <div class="legend-group">
@@ -169,8 +197,8 @@
         <div class="drawer-title-row">
           <div class="icon-circle"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div>
           <div class="header-titles">
-            <h3>{{ selectedNode.title }}</h3>
-            <span class="sub">{{ selectedNode.subtitle }}</span>
+            <h3>{{ selectedNode?.label || documentId }}</h3>
+            <span class="sub">{{ selectedNode?.type || 'Document' }}</span>
             <span class="badge-current">Current</span>
           </div>
           <button class="close-btn">&times;</button>
@@ -179,7 +207,7 @@
         <!-- Tabs -->
         <div class="drawer-tabs">
           <button [class.active]="selectedTab === 'details'" (click)="selectedTab = 'details'">Details</button>
-          <button [class.active]="selectedTab === 'relationships'" (click)="selectedTab = 'relationships'">Relationships <span class="num-badge">8</span></button>
+          <button [class.active]="selectedTab === 'relationships'" (click)="selectedTab = 'relationships'">Relationships <span class="num-badge">{{ graphData?.edges?.length || 0 }}</span></button>
         </div>
       </div>
 
@@ -188,77 +216,71 @@
           <div class="meta-list">
             <div class="meta-item">
               <span class="meta-label">Title</span>
-              <span class="meta-value font-semibold">{{ selectedNode.fullTitle }}</span>
+              <span class="meta-value font-semibold">{{ selectedNode?.label || 'Not available' }}</span>
             </div>
 
             <div class="meta-item">
               <span class="meta-label">Document ID</span>
-              <span class="meta-value font-mono">{{ selectedNode.documentId }}</span>
+              <span class="meta-value font-mono">{{ selectedNode?.id || documentId }}</span>
             </div>
 
             <div class="meta-item">
               <span class="meta-label">Date Issued</span>
-              <span class="meta-value">{{ selectedNode.dateIssued }}</span>
+              <span class="meta-value">{{ selectedNode?.type || 'Not available' }}</span>
             </div>
 
             <div class="meta-item">
-              <span class="meta-label">Category</span>
-              <span class="meta-value">{{ selectedNode.category }}</span>
+              <span class="meta-label">Relationships</span>
+              <span class="meta-value">{{ getOutgoingEdges(selectedNode?.id || '').length }}</span>
             </div>
 
             <div class="meta-item">
-              <span class="meta-label">Sub Category</span>
-              <span class="meta-value">{{ selectedNode.subCategory }}</span>
+              <span class="meta-label">Root Document</span>
+              <span class="meta-value font-mono">{{ graphData?.root_document_id || documentId }}</span>
             </div>
 
             <div class="meta-item">
-              <span class="meta-label">Origin</span>
-              <span class="meta-value">{{ selectedNode.origin }}</span>
+              <span class="meta-label">Node Type</span>
+              <span class="meta-value">{{ selectedNode?.type || 'Not available' }}</span>
             </div>
 
             <div class="meta-item">
               <span class="meta-label">Status</span>
-              <span class="meta-value"><span class="dot-active"></span> {{ selectedNode.status }}</span>
+              <span class="meta-value"><span class="dot-active"></span> Available</span>
             </div>
 
             <div class="meta-item">
               <span class="meta-label">Version</span>
-              <span class="meta-value">{{ selectedNode.version }}</span>
+              <span class="meta-value">{{ graphData?.nodes?.length || 0 }}</span>
             </div>
 
             <div class="meta-item">
-              <span class="meta-label">Language</span>
-              <span class="meta-value">{{ selectedNode.language }}</span>
+              <span class="meta-label">Identifier</span>
+              <span class="meta-value font-mono">{{ selectedNode?.id || documentId }}</span>
             </div>
 
             <div class="meta-item full">
               <span class="meta-label">Summary</span>
-              <p class="summary-text">{{ selectedNode.summary }}</p>
+              <p class="summary-text">Graph lineage for {{ selectedNode?.label || documentId }}.</p>
             </div>
           </div>
         } @else {
           <div class="rel-list">
-            <div class="rel-card">
-              <span class="rel-type modifies">MODIFIES</span>
-              <span class="target-title">Circular N° 2022-12</span>
-              <span class="target-sub">Reserve Requirements (Superseded)</span>
-            </div>
-            <div class="rel-card">
-              <span class="rel-type references">REFERENCES</span>
-              <span class="target-title">Circular N° 2024-08</span>
-              <span class="target-sub">Liquidity Management</span>
-            </div>
-            <div class="rel-card">
-              <span class="rel-type derived">DERIVED FROM</span>
-              <span class="target-title">Regulation Act 2019</span>
-              <span class="target-sub">Banking Act</span>
-            </div>
+            @for (edge of getOutgoingEdges(selectedNode?.id || ''); track edge.source + '-' + edge.target + '-' + edge.relationship) {
+              <div class="rel-card">
+                <span class="rel-type references">{{ edge.relationship }}</span>
+                <span class="target-title">{{ getNodeLabel(edge.target) }}</span>
+                <span class="target-sub">{{ edge.target }}</span>
+              </div>
+            } @empty {
+              <p class="summary-text">No outgoing relationships for this node.</p>
+            }
           </div>
         }
       </div>
 
       <div class="drawer-footer">
-        <a [routerLink]="['/verification', 'cb-circ-2026-05']" class="view-doc-btn">
+        <a [routerLink]="['/verification', selectedNode?.id || documentId]" class="view-doc-btn">
           <span>View Document</span>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
         </a>

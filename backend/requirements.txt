@@ -1,4 +1,5 @@
 # Web Framework & Auth
+--extra-index-url https://download.pytorch.org/whl/cpu
 flask
 flask-cors
 flask-sqlalchemy
@@ -21,6 +22,7 @@ email-validator
 langchain
 langgraph
 langchain-google-genai
+langchain-classic
 openai
 
 # Cloud Storage
@@ -38,8 +40,31 @@ werkzeug
 
 # Document Processing (Lightweight PDF Parsing)
 unstructured
+unstructured[pdf]
 pdfminer.six
 pypdf
 pdf2image
+python-magic
 
 networkx
+
+
+numpy
+matplotlib
+python-json-logger
+tiktoken 
+
+opentelemetry-distro
+opentelemetry-exporter-otlp
+opentelemetry-instrumentation-flask
+opentelemetry-instrumentation-sqlalchemy
+opentelemetry-instrumentation-requests
+opentelemetry-instrumentation-logging
+
+
+gunicorn
+
+langchain-openrouter
+
+azure-identity
+azure-keyvault-secrets

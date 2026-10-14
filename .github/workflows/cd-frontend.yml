@@ -1,15 +1,41 @@
-# name: CD - Frontend
+name: CD - Frontend
 
-# on:
-#   push:
-#     branches:
-#       - main
-#     paths:
-#       - 'frontend/**'
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/cd-frontend.yml'
 
-# concurrency:
-#   group: cd-frontend-production
-#   cancel-in-progress: true
+concurrency:
+  group: cd-frontend-production
+  cancel-in-progress: true
+env:
+  DOCKER_IMAGE_NAME: attijary-front-app
+  IMAGE_TAG: ${{ github.sha }}
 
-# jobs:
-#     # cd-frontend:
+jobs:
+  build-frontend:
+    uses: ./.github/workflows/docker-build-image.yml
+    with:
+      dockerfile_path: 'Dockerfile'
+      image_name: attijary-front-app
+      push_image: true
+      image_tag: 'prod'
+      context: 'frontend'
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+  cd-frontend:
+    runs-on: ubuntu-latest
+    needs: build-frontend
+    environment: production
+    steps:
+      - name: Echo Frontend Deployment
+        run: echo "Deploying frontend application to production environment"
+
+      - name: Trigger render webhook
+        run: |
+          echo "Triggering Render webhook for frontend deployment"
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"

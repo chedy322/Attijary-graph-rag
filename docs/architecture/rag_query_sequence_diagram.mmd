@@ -1,0 +1,49 @@
+sequenceDiagram
+    autonumber
+    actor User
+    participant Angular as Angular Frontend
+    participant API as Flask API
+    participant Clerk as Clerk Authentication
+    participant PostgreSQL as PostgreSQL DB
+    participant Router as Gemini Quick Model (Router)
+    participant Agent as LangChain Agent Executor
+    participant Weaviate as Weaviate (Vector)
+    participant Neo4j as Neo4j (Graph)
+    participant Gemini as Gemini LLM
+
+    User->>Angular: Submit query
+    Angular->>API: POST /api/v1/agent/query
+    API->>Clerk: Validate Auth Token
+    Clerk-->>API: User Context
+    
+    API->>PostgreSQL: Save User Message & Load History
+    PostgreSQL-->>API: History context
+
+    API->>Router: Refactor query & classify intent
+    Router-->>API: routed_method, refactored_query
+
+    alt routed_method == 'hybrid_search_tool'
+        API->>Weaviate: Hybrid search (vector + keyword)
+        Weaviate-->>API: Text chunks & metadata
+        API->>Gemini: Quick answer synthesis
+        Gemini-->>API: Generated answer
+    else routed_method == 'unrelated_or_conversational'
+        API->>Gemini: Conversational LLM call
+        Gemini-->>API: Conversational answer
+    else routed_method == Agent Fallback / Graph
+        API->>Agent: Invoke Agent Executor
+        opt Tool Execution Loop
+            Agent->>Neo4j: Query local/global graph
+            Neo4j-->>Agent: Entities & relationships
+            Agent->>Weaviate: Run hybrid vector search
+            Weaviate-->>Agent: Text chunks
+            Agent->>Gemini: Tool output synthesis
+            Gemini-->>Agent: Final Agent Output
+        end
+        Agent-->>API: Agent response & intermediate artifacts
+    end
+
+    API->>PostgreSQL: Persist Assistant response & rag_source
+    PostgreSQL-->>API: Commit successful
+    API-->>Angular: JSON Response (content, sources, rag_source)
+    Angular-->>User: Render response

@@ -55,6 +55,7 @@ class WeaviateClient:
             self._client = weaviate.connect_to_weaviate_cloud(
                 cluster_url=url,
                 auth_credentials=Auth.api_key(api_key) if api_key else None,
+                skip_init_checks=True
             )
 
         return self._client

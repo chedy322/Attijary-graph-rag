@@ -1,0 +1,74 @@
+name: CD - Production Backend
+
+on:
+  workflow_run:
+    workflows: ["CD - Staging Backend"]
+    types:
+      - completed
+
+concurrency:
+  group: production-backend
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: production-graphRag-backend
+  IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+
+jobs:
+  deploy-backend-to-production-environment:
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
+    environment: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Copy docker-compose file to production VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.PRODUCTION_VM_IP }}
+          username: azureadminstudent
+          key: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
+          source: vm-docker-compose.yml
+          target: /opt/graphrag/production/
+
+      - name: Deploy backend to production VM
+        uses: appleboy/ssh-action@v1.2.2
+        env:
+          IMAGE: docker.io/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        with:
+          host: ${{ secrets.PRODUCTION_VM_IP }}
+          username: azureadminstudent
+          key: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
+          envs: IMAGE,DOCKER_USERNAME,DOCKER_PASSWORD
+          script: |
+            echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
+            docker pull "$IMAGE"
+            IMAGE_NAME="$IMAGE" docker compose -f /opt/graphrag/production/vm-docker-compose.yml up -d --remove-orphans
+            
+            # Health check loop
+            for attempt in {1..30}; do
+                if curl --fail --silent --show-error "http://localhost:5000/healthz/ready"; then
+                    echo "Backend deployed successfully"
+                    docker image prune -f
+                    exit 0
+                fi
+                sleep 10
+            done
+            
+            echo "Failed to start the backend"
+            exit 1
+
+            # Delete old images to free up space
+            docker image prune -f

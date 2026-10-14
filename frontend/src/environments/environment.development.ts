@@ -1,6 +1,6 @@
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:3000/api',
+  apiUrl: '/api',
   clerkPublishableKey:
-    'pk_test_Y2xlcmstY2VudHJhbGJhbmsuY2xlcmsuYWNjb3VudHMuZGV2JA',
+    'pk_test_bW9yZS1idWxsZG9nLTI3LmNsZXJrLmFjY291bnRzLmRldiQ',
 };

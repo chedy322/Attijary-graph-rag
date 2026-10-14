@@ -1,17 +1,21 @@
+import uuid
+
 from core.exceptions import AppError
 from models.user import User
 from config.clerk import clerk_client
 from config.database import db
 from services.dto.auth_service_dto import AuthServiceDTO
 from flask import g
-
+import logging
+import datetime
+audit_logger = logging.getLogger("audit")
 
 class AuthService:
-    def __init__(self, clerk_client, db):
+    def __init__(self, clerk_client=clerk_client, db=db):
         self.clerk_client = clerk_client
         self.db = db
 
-    def sync_user(self):
+    def sync_user(self,extra_data: dict = None) -> AuthServiceDTO:
         """
         Ensures the authenticated Clerk user exists in the local database.
         Creates a new local user record if they are logging in for the first time.
@@ -27,7 +31,7 @@ class AuthService:
                 # User exists, no need to make an expensive network call to Clerk
                 return AuthServiceDTO.map(existing_user)
 
-            # 2. If the user does not exist, they are new to your backend.
+            # 2. If the user does not exist, they are new to  backend.
             user_data = self.clerk_client.get_user(user_id=clerk_user_id)
             if not user_data:
                 raise AppError("User not found in Clerk", 404)
@@ -54,6 +58,19 @@ class AuthService:
             self.db.session.add(new_user)
             self.db.session.commit()
 
+            audit_logger.info("User registered successfullly", extra={"audit":
+                              {
+                "id":uuid.uuid4(),
+                "user_id": new_user.user_id, 
+             "action": "REGISTER",
+                "details": "User registered successfully.",
+                "target_id": new_user.user_id,
+                "target_resource": "User",
+                "ip_address": extra_data.get("ip_address") if extra_data else None,
+                "created_at": datetime.datetime.utcnow()
+                }
+                }
+                  )
             return AuthServiceDTO.map(new_user)
         except AppError as e:
             self.db.session.rollback()
@@ -63,4 +80,4 @@ class AuthService:
             raise AppError(f"User synchronization failed: {str(e)}", 500)
 
 
-auth_service = AuthService(clerk_client=clerk_client, db=db)
+auth_service = AuthService()
