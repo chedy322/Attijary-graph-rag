@@ -142,7 +142,8 @@ flowchart LR
 
 ### Deployment Topology
 
-[Application Architecture.pdf](https://github.com/user-attachments/files/33483529/Application.Architecture.pdf)
+<img width="1698" height="751" alt="Screenshot 2026-10-15 115356" src="https://github.com/user-attachments/assets/3e1988fe-ad26-4a5e-865a-a4dcb8ad4b71" />
+
 
 
 ### RAG Query Sequence
