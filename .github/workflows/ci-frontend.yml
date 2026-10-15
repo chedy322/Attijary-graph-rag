@@ -29,7 +29,7 @@ jobs:
     with:
       image_name: 'graphrag-frontend'
       image_tag: 'latest'
-      dockerfile_path: 'Dockerfile'
+      dockerfile_path: 'frontend/Dockerfile'
       context: 'frontend'
       push_image: false
     secrets:
