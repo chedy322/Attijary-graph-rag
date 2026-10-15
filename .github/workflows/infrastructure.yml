@@ -116,7 +116,7 @@ jobs:
                 exit-code: '1'
 
         -   name: Download approved Terraform plan
-            uses: actions/download-artifact@v4
+            uses: actions/download-artifact@v4.1.3
             with:
                 name: tfplan
                 path: infrastructure/terraform/environments/prod
