@@ -226,6 +226,7 @@ jobs:
         with:
           name: staging-k6-results-${{ github.sha }}
           path: staging-k6-summary.json
+  
   promote-docker-image:
     name: Promote Docker image to immutable production SHA
     runs-on: ubuntu-latest

@@ -34,8 +34,8 @@ jobs:
     uses: ./.github/workflows/docker-build-image.yml
     with:
       image_name: 'graphrag-backend'
-      image_tag: 'latest'
       dockerfile_path: 'backend/Dockerfile'
+      image_tag: backend-pr-${{ github.event.pull_request.number }}
       context: 'backend'
       push_image: false
     secrets:

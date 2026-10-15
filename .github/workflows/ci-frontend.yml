@@ -28,8 +28,8 @@ jobs:
     uses: ./.github/workflows/docker-build-image.yml
     with:
       image_name: 'graphrag-frontend'
-      image_tag: 'latest'
       dockerfile_path: 'frontend/Dockerfile'
+      image_tag: frontend-pr-${{ github.event.pull_request.number }}
       context: 'frontend'
       push_image: false
     secrets:
