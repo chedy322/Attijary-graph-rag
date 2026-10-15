@@ -19,5 +19,5 @@ terraform {
 provider "azurerm" {
   features {}
   storage_use_azuread = true
-  use_oidc = true
+  use_oidc            = true
 }
