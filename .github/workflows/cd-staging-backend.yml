@@ -29,8 +29,8 @@ jobs:
     name: Build and scan backend image
     uses: ./.github/workflows/docker-build-image.yml
     with:
-      context: backend
-      dockerfile_path: Dockerfile
+      context: 'backend/Dockerfile'
+      dockerfile_path: 'Dockerfile'
       image_name: staging-graphRag-backend
       image_tag: ${{ github.sha }}
       push_image: true
