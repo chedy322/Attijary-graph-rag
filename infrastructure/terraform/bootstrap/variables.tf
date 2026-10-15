@@ -53,3 +53,9 @@ variable "resource_location" {
 #   description = "The name of the resource group to create."
 #   type        = string
 # }
+
+
+variable "github_actions_principal_id" {
+  description = "The principal ID of the GitHub Actions OIDC identity."
+  type        = string
+}

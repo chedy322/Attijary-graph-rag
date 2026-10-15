@@ -2,8 +2,8 @@ data "azurerm_client_config" "current" {}
 
 # Create the resource group
 resource "azurerm_resource_group" "bootstrap_rg" {
-  name     = var.bootstrap_resource_group_name 
-  location = var.resource_location 
+  name     = var.bootstrap_resource_group_name
+  location = var.resource_location
 }
 
 
@@ -24,8 +24,8 @@ resource "azurerm_storage_account" "tfstate_storage" {
   public_network_access_enabled   = true
   allow_nested_items_to_be_public = false
   shared_access_key_enabled       = true
-    #   
- depends_on = [azurerm_resource_group.bootstrap_rg] 
+  #   
+  depends_on = [azurerm_resource_group.bootstrap_rg]
 }
 
 resource "time_sleep" "wait_for_storage" {
@@ -176,3 +176,10 @@ resource "azurerm_role_assignment" "tfstate_local_storage_contributor" {
 # LEGACY ACCESS POLICIES is a method of access control that allows you to assign permissions to users, groups, and applications. It is a more rigid and less flexible way of controlling access to Azure resources. In this case, we are using LEGACY ACCESS POLICIES to grant the management identity access to the key vaults.
 # I DID THIS FOR LEARNING PURPOSE
 
+
+
+resource "azurerm_role_assignment" "tfstate_github_actions_contributor" {
+  scope                = azurerm_storage_account.tfstate_storage.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = var.github_actions_principal_id
+}
