@@ -24,6 +24,11 @@ concurrency:
 jobs:
   infrastructure-ci:
     runs-on: ubuntu-latest
+    env:
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_USE_OIDC: "true"
     defaults:
       run:
         working-directory: ./infrastructure/terraform/environments/prod
@@ -81,6 +86,11 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     # Environment production should have user approval before starting the  deployment job.
     environment: production
+    env:
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_USE_OIDC: "true"
     defaults:
         run:
             working-directory: ./infrastructure/terraform/environments/prod
