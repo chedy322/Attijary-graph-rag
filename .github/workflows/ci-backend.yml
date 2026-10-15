@@ -35,7 +35,7 @@ jobs:
     with:
       image_name: 'graphrag-backend'
       image_tag: 'latest'
-      dockerfile_path: 'Dockerfile'
+      dockerfile_path: 'backend/Dockerfile'
       context: 'backend'
       push_image: false
     secrets:
