@@ -27,7 +27,7 @@ jobs:
   docker-build-and-scan:
     uses: ./.github/workflows/docker-build-image.yml
     with:
-      image_name: 'graphRag-frontend'
+      image_name: 'graphrag-frontend'
       image_tag: 'latest'
       dockerfile_path: 'Dockerfile'
       context: 'frontend'
