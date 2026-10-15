@@ -4,7 +4,7 @@ WORKDIR /app
 COPY package*.json ./
 # Store the packages separately to leverage Docker cache
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci
+    npm i
 
 COPY . .
 RUN npm run build --prod
