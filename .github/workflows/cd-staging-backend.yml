@@ -1,0 +1,257 @@
+# Deploy only the backend to staging, then run smoke and load tests.
+name: CD - Staging Backend
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - 'infrastructure/terraform/environments/staging/**'
+      - 'infrastructure/terraform/modules/**'
+      - '.github/workflows/cd-staging-backend.yml'
+      - '.github/workflows/docker-build-image.yml'
+
+concurrency:
+  group: staging-backend
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: staging-graphRag-backend
+  IMAGE_TAG: ${{ github.sha }}
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build-backend:
+    name: Build and scan backend image
+    uses: ./.github/workflows/docker-build-image.yml
+    with:
+      context: 'backend/Dockerfile'
+      dockerfile_path: 'Dockerfile'
+      image_name: staging-graphRag-backend
+      image_tag: ${{ github.sha }}
+      push_image: true
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+
+  provision-staging:
+    name: Provision staging infrastructure
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_USE_OIDC: "true"
+    outputs:
+      public_ip: ${{ steps.terraform-output.outputs.public_ip }}
+    defaults:
+      run:
+        working-directory: infrastructure/terraform/environments/staging
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Terraform format check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        env:
+          TF_VAR_STAGING_SSH_PUBLIC_KEY: ${{ secrets.STAGING_SSH_PUBLIC_KEY }}
+        run: terraform plan -out=staging.tfplan
+
+      - name: Terraform apply
+        env:
+          TF_VAR_STAGING_SSH_PUBLIC_KEY: ${{ secrets.STAGING_SSH_PUBLIC_KEY }}
+        run: terraform apply -auto-approve staging.tfplan
+
+      - name: Read staging VM address
+        id: terraform-output
+        run: echo "public_ip=$(terraform output -raw public_ip_address)" >> "$GITHUB_OUTPUT"
+
+  configure-stagingserver-with-ansible:
+    name: Configure staging server with Ansible
+    runs-on: ubuntu-latest
+    needs: provision-staging
+    environment: staging
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Ansible
+        run: |
+          sudo apt update
+          sudo apt install -y ansible
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.STAGING_SSH_PRIVATE_KEY }}" > ~/.ssh/staging_rsa
+          chmod 600 ~/.ssh/staging_rsa
+
+      - name: Wait for SSH to be ready
+        env:
+          STAGING_IP: ${{ needs.provision-staging.outputs.public_ip }}
+        run: |
+          for attempt in {1..30}; do
+            if nc -z -w 5 "$STAGING_IP" 22; then
+              echo "SSH port is open"
+              exit 0
+            fi
+            echo "Waiting for SSH..."
+            sleep 5
+          done
+          exit 1
+
+      - name: Run Ansible playbook to configure staging server
+        env:
+          STAGING_IP: ${{ needs.provision-staging.outputs.public_ip }}
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+        run: |
+          ansible-playbook \
+            -i "${STAGING_IP}," \
+            -u azureadminstudent \
+            --private-key ~/.ssh/staging_rsa \
+            infrastructure/ansible/setup.yaml
+      - name: Run cleanup for ssh key
+        if: always()
+        run: rm -f ~/.ssh/staging_rsa
+
+  deploy-backend:
+    name: Deploy backend to staging VM
+    runs-on: ubuntu-latest
+    needs:
+      - build-backend
+      - provision-staging
+      - configure-stagingserver-with-ansible
+    environment: staging
+    steps:
+      # Checkout the repository to access the docker-compose file
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      # SCP docker compose file to staging VM
+      - name: Copy docker-compose file to staging VM
+        uses: appleboy/scp-action@v0.1.3
+        with:
+          host: ${{ needs.provision-staging.outputs.public_ip }}
+          username: azureadminstudent
+          key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          source: vm-docker-compose.yml
+          target: /opt/graphrag/staging/
+      - name: Deploy immutable image over SSH
+        uses: appleboy/ssh-action@v1.2.2
+        env:
+          IMAGE: docker.io/${{ secrets.DOCKER_USERNAME }}/staging-graphRag-backend:${{ github.sha }}
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        with:
+          host: ${{ needs.provision-staging.outputs.public_ip }}
+          username: azureadminstudent
+          key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          envs: IMAGE,DOCKER_USERNAME,DOCKER_PASSWORD
+          script: |
+            echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
+            docker pull "$IMAGE"
+            IMAGE_NAME="$IMAGE" docker-compose -f /opt/graphrag/staging/vm-docker-compose.yml up -d --remove-orphans
+            
+
+  smoke-test:
+    name: Run staging smoke tests
+    runs-on: ubuntu-latest
+    needs:
+      - provision-staging
+      - deploy-backend
+    environment: staging
+    steps:
+      - name: Wait for readiness
+        env:
+          STAGING_IP: ${{ needs.provision-staging.outputs.public_ip }}
+        run: |
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error "http://${STAGING_IP}/healthz/ready"; then
+              exit 0
+            fi
+            sleep 10
+          done
+          exit 1
+
+      - name: Check health endpoint
+        env:
+          STAGING_IP: ${{ needs.provision-staging.outputs.public_ip }}
+        run: curl --fail --silent --show-error "http://${STAGING_IP}/health"
+
+  load-test:
+    name: Run staging k6 load test
+    runs-on: ubuntu-latest
+    needs:
+      - provision-staging
+      - smoke-test
+    environment: staging
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Run k6 and publish results
+        env:
+          BASE_URL: http://${{ needs.provision-staging.outputs.public_ip }}
+          # Clerk token not needed because staging has no authentication enabled.
+        run: |
+          k6 run \
+            --summary-export=staging-k6-summary.json \
+            backend/k6_load_testing.js
+
+      - name: Upload k6 results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-k6-results-${{ github.sha }}
+          path: staging-k6-summary.json
+  
+  promote-docker-image:
+    name: Promote Docker image to immutable production SHA
+    runs-on: ubuntu-latest
+    needs: load-test
+    if: ${{ github.ref == 'refs/heads/main' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Promote image to immutable production tag
+        run: |
+          docker pull docker.io/${{ secrets.DOCKER_USERNAME }}/staging-graphRag-backend:${{ github.sha }}
+          docker tag docker.io/${{ secrets.DOCKER_USERNAME }}/staging-graphRag-backend:${{ github.sha }} docker.io/${{ secrets.DOCKER_USERNAME }}/production-graphRag-backend:${{ github.sha }}
+          docker push docker.io/${{ secrets.DOCKER_USERNAME }}/production-graphRag-backend:${{ github.sha }}

@@ -104,21 +104,6 @@
           </div>
         </div>
 
-        <!-- Demo Role Selector (Allowed for easy testing) -->
-        <div class="role-selector">
-          <span class="role-title">Select Initial Account Role (Demo):</span>
-          <div class="role-options">
-            <label class="role-radio">
-              <input type="radio" [(ngModel)]="rolePreference" name="rolePreference" value="ADMIN" />
-              <span>Administrator</span>
-            </label>
-            <label class="role-radio">
-              <input type="radio" [(ngModel)]="rolePreference" name="rolePreference" value="USER" />
-              <span>Standard User</span>
-            </label>
-          </div>
-        </div>
-
         <!-- Forgot Password Link -->
         @if (activeTab === 'signin') {
           <div class="forgot-link-row">

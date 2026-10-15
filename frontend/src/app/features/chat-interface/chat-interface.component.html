@@ -1,6 +1,12 @@
 <div class="chat-container">
+  @if (errorMessage) {
+    <div class="error-banner" role="alert">
+      {{ errorMessage }}
+      <button type="button" (click)="errorMessage = null" aria-label="Dismiss error">&times;</button>
+    </div>
+  }
   <!-- Left Sub-Sidebar: Chat Sessions List -->
-  <div class="chat-sessions-sidebar">
+  <div class="chat-sessions-sidebar" [class.mobile-history-open]="showChatHistory">
     <div class="sessions-header">
       <div class="header-top">
         <h2>Chat Sessions</h2>
@@ -16,12 +22,12 @@
       </button>
 
       <!-- Filter Tabs -->
-      <div class="filter-tabs">
+      <!-- <div class="filter-tabs">
         <button [class.active]="activeTab === 'all'" (click)="activeTab = 'all'">All</button>
         <button [class.active]="activeTab === 'today'" (click)="activeTab = 'today'">Today</button>
         <button [class.active]="activeTab === 'week'" (click)="activeTab = 'week'">This week</button>
         <button [class.active]="activeTab === 'older'" (click)="activeTab = 'older'">Older</button>
-      </div>
+      </div> -->
     </div>
 
     <!-- Sessions List -->
@@ -40,17 +46,17 @@
             <span class="session-title">{{ chat.title }}</span>
             <span class="session-time">{{ chat.created_at }}</span>
           </div>
-          <button class="more-btn">&hellip;</button>
+          <button class="more-btn" (click)="deleteChat(chat.chat_id, $event)" title="Delete chat">&times;</button>
         </div>
       }
     </div>
 
-    <div class="sessions-footer">
+    <!-- <div class="sessions-footer">
       <button class="view-all-btn">
         <span>View all sessions</span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
       </button>
-    </div>
+    </div> -->
   </div>
 
   <!-- Main Chat Conversation View -->
@@ -58,6 +64,9 @@
     <!-- Chat Header -->
     <div class="chat-header">
       <div class="chat-title-group">
+        <button class="mobile-history-toggle" type="button" (click)="toggleChatHistory()" aria-label="Toggle chat history">
+          &#9776;
+        </button>
         <h1 class="chat-title">{{ activeChatTitle }}</h1>
         <button class="edit-btn" title="Edit Title">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
@@ -67,7 +76,7 @@
       <div class="chat-header-actions">
         <div class="security-badge">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          <span>Enterprise Secure • SOC 2 Type II • ISO 27001</span>
+          <span>Attijary Enterprise 2026</span>
         </div>
         <div class="avatar-sm">MA</div>
       </div>
@@ -119,7 +128,7 @@
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                       <span>Graph Context (Regulatory Lineage)</span>
                     </div>
-                    <a [routerLink]="['/graph']" class="expand-graph-btn">
+                    <a [routerLink]="['/graph', msg.rag_source?.sources?.[0]?.document_id || 'cb-circ-2026-05']" class="expand-graph-btn">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
                       Expand Graph
                     </a>
@@ -127,7 +136,7 @@
 
                   <!-- Visual Node Diagram -->
                   <div class="graph-nodes-diagram">
-                    @for (ctx of msg.rag_source?.graph_context; track ctx.source_node) {
+                    @for (ctx of msg.rag_source?.graph_context; track $index) {
                       <div class="node-card source-node">
                         <div class="node-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div>
                         <div class="node-info">
@@ -164,8 +173,8 @@
                   </div>
 
                   <div class="sources-grid">
-                    @for (src of msg.rag_source?.sources; track src.document || src.title) {
-                      <a [routerLink]="['/verification', src.document_id || 'cb-circ-2026-05']" class="source-card">
+                    @for (src of msg.rag_source?.sources; track src.document_id) {
+                      <a [routerLink]="['/verification', src.document_id]" class="source-card">
                         <div class="pdf-tag">PDF</div>
                         <div class="source-info">
                           <span class="source-name">{{ src.document || src.title }}</span>

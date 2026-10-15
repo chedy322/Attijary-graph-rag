@@ -1,0 +1,34 @@
+architecture-beta
+    group users(internet)[Users]
+    group frontend(cloud)[Frontend Hosting]
+    group azure_vm(server)[Azure VM 1 CPU Core 1 GB RAM]
+    group managed(cloud)[Managed Cloud Services]
+
+    service client(internet)[Web Browser] in users
+    service nginx(server)[Angular Static Host and Nginx Proxy] in frontend
+    service api(server)[Flask API and Gunicorn] in azure_vm
+    service celery(server)[Celery Worker] in azure_vm
+    service redis(database)[Redis Cloud Broker] in managed
+    service postgres(database)[Supabase PostgreSQL] in managed
+    service weaviate(database)[Weaviate Cloud DB] in managed
+    service neo4j(database)[Neo4j Cloud DB] in managed
+    service blob(disk)[Azure Blob Storage] in managed
+    service clerk(cloud)[Clerk Authentication] in managed
+    service gemini(cloud)[Google Gemini LLM API] in managed
+
+    client:R --> L:nginx
+    client:B --> T:clerk
+    nginx:R --> L:api
+    api:R --> L:redis
+    redis:L --> R:celery
+    api:B --> T:postgres
+    api:B --> T:weaviate
+    api:B --> T:neo4j
+    api:B --> T:blob
+    api:B --> T:gemini
+    api:R --> L:clerk
+    celery:B --> T:postgres
+    celery:B --> T:weaviate
+    celery:B --> T:neo4j
+    celery:B --> T:blob
+    celery:B --> T:gemini

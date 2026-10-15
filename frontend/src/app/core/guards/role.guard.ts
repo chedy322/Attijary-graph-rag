@@ -1,19 +1,5 @@
-import { CanActivateFn, Router } from '@angular/router';
-import { inject } from '@angular/core';
-import { AuthService } from '../services/auth.service';
+import { CanActivateFn } from '@angular/router';
+import { adminRoleGuard } from './admin-role.guard';
 
-export const roleGuard: CanActivateFn = (route, state) => {
-  const authService = inject(AuthService);
-  const router = inject(Router);
-
-  if (!authService.isLoggedIn()) {
-    return router.createUrlTree(['/auth']);
-  }
-
-  if (authService.isAdmin()) {
-    return true;
-  }
-
-  // Redirect standard users to /chat if unauthorized for admin routes
-  return router.createUrlTree(['/chat']);
-};
+export const roleGuard: CanActivateFn = adminRoleGuard;
+export { adminRoleGuard };

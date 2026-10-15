@@ -1,9 +1,9 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { ActivatedRoute, RouterModule } from '@angular/router';
 import { AgentService } from '../../core/services';
-import { GraphLineageResponse } from '../../core/models';
+import { GraphLineageResponse, GraphNode } from '../../core/models';
 
 @Component({
   selector: 'app-graph-explorer',
@@ -14,127 +14,81 @@ import { GraphLineageResponse } from '../../core/models';
 })
 export class GraphExplorerComponent implements OnInit {
   private agentService = inject(AgentService);
+  private route = inject(ActivatedRoute);
 
   documentId = 'cb-circ-2026-05';
   graphData: GraphLineageResponse | null = null;
+  selectedNode: GraphNode | null = null;
+  isLoading = false;
+  errorMessage: string | null = null;
   selectedTab: 'details' | 'relationships' = 'details';
 
-  // Active selected node details
-  selectedNode = {
-    title: 'Circular N° 2026-05',
-    subtitle: 'Reserve Requirements',
-    fullTitle: 'Reserve Requirements for Commercial Banks in Local Currency',
-    documentId: 'CB-CIRC-2026-05',
-    dateIssued: 'May 15, 2026',
-    category: 'Monetary Policy',
-    subCategory: 'Reserve Requirements',
-    origin: 'Monetary Policy Department',
-    status: 'Current',
-    version: '1.0',
-    language: 'English',
-    summary:
-      'This circular sets out the reserve requirements applicable to all commercial banks for their local currency liabilities.',
-  };
-
   ngOnInit(): void {
-    this.loadGraphData();
+    this.route.paramMap.subscribe((params) => {
+      const routeDocumentId = params.get('documentId');
+      const queryDocumentId = this.route.snapshot.queryParamMap.get('document_id');
+      const nextDocumentId = routeDocumentId ?? queryDocumentId ?? this.documentId;
+
+      if (nextDocumentId) {
+        this.documentId = nextDocumentId;
+      }
+
+      this.loadGraphData();
+    });
   }
 
   loadGraphData(): void {
+    this.isLoading = true;
+    this.errorMessage = null;
     this.agentService.getGraphLineage(this.documentId).subscribe({
       next: (data) => {
         this.graphData = data;
+        this.selectedNode =
+          data.nodes.find((node) => node.id === data.root_document_id) ??
+          data.nodes[0] ??
+          null;
+        this.isLoading = false;
       },
       error: () => {
-        // Fallback mock graph nodes matching Mockup 2
-        this.graphData = {
-          root_document_id: 'cb-circ-2026-05',
-          nodes: [
-            {
-              id: 'cb-circ-2026-05',
-              label: 'Circular N° 2026-05',
-              type: 'Document',
-            },
-            {
-              id: 'cb-circ-2024-08',
-              label: 'Circular N° 2024-08',
-              type: 'Document',
-            },
-            {
-              id: 'cb-circ-2022-12',
-              label: 'Circular N° 2022-12',
-              type: 'Document',
-            },
-            {
-              id: 'reg-2019',
-              label: 'Regulation Act 2019',
-              type: 'Regulation',
-            },
-            {
-              id: 'cb-circ-2021-07',
-              label: 'Circular N° 2021-07',
-              type: 'Document',
-            },
-            {
-              id: 'cb-circ-2020-11',
-              label: 'Circular N° 2020-11',
-              type: 'Document',
-            },
-            {
-              id: 'cb-circ-2023-03',
-              label: 'Circular N° 2023-03',
-              type: 'Document',
-            },
-            {
-              id: 'cb-circ-2025-01',
-              label: 'Circular N° 2025-01',
-              type: 'Document',
-            },
-          ],
-          edges: [
-            {
-              source: 'cb-circ-2026-05',
-              target: 'cb-circ-2024-08',
-              relationship: 'REFERENCES',
-            },
-            {
-              source: 'cb-circ-2026-05',
-              target: 'cb-circ-2022-12',
-              relationship: 'MODIFIES',
-            },
-            {
-              source: 'cb-circ-2026-05',
-              target: 'reg-2019',
-              relationship: 'DERIVED FROM',
-            },
-            {
-              source: 'cb-circ-2026-05',
-              target: 'cb-circ-2021-07',
-              relationship: 'REFERENCES',
-            },
-            {
-              source: 'cb-circ-2026-05',
-              target: 'cb-circ-2020-11',
-              relationship: 'RELATED TO',
-            },
-            {
-              source: 'cb-circ-2026-05',
-              target: 'cb-circ-2023-03',
-              relationship: 'REFERENCES',
-            },
-            {
-              source: 'cb-circ-2026-05',
-              target: 'cb-circ-2025-01',
-              relationship: 'REFERENCES',
-            },
-          ],
-        };
+        this.graphData = null;
+        this.selectedNode = null;
+        this.isLoading = false;
+        this.errorMessage = 'Unable to load graph lineage for this document.';
       },
     });
   }
 
-  selectNode(nodeId: string, label: string): void {
-    this.selectedNode.title = label;
-    this.selectedNode.documentId = nodeId.toUpperCase();
+  selectNode(nodeOrId: GraphNode | string, label?: string): void {
+    if (typeof nodeOrId !== 'string') {
+      this.selectedNode = nodeOrId;
+      return;
+    }
+
+    const node = this.graphData?.nodes.find((item) => item.id === nodeOrId);
+    this.selectedNode = node ?? {
+      id: nodeOrId,
+      label: label ?? nodeOrId,
+      type: 'Document',
+    };
+  }
+
+  getNodePosition(index: number): string {
+    return [
+      'node-top',
+      'node-top-right',
+      'node-right',
+      'node-bottom-right',
+      'node-bottom',
+      'node-bottom-left',
+      'node-left',
+    ][index - 1] ?? 'node-bottom';
+  }
+
+  getNodeLabel(nodeId: string): string {
+    return this.graphData?.nodes.find((node) => node.id === nodeId)?.label ?? nodeId;
+  }
+
+  getOutgoingEdges(nodeId: string) {
+    return this.graphData?.edges.filter((edge) => edge.source === nodeId) ?? [];
   }
 }

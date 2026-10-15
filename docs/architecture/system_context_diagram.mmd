@@ -1,0 +1,28 @@
+flowchart LR
+    user([User])
+    identity([Identity Provider])
+    model([Language Model Service])
+    file_store([Document Storage])
+    record_store([Operational Data Store])
+    vector_store([Semantic Search Service])
+    graph_store([Knowledge Graph Service])
+
+    system["GraphRAG System"]
+
+    user -->|Submits questions and documents| system
+    system -->|Returns answers, search results, and processing status| user
+
+    system <-->|Authenticates users and validates sessions| identity
+    system <-->|Sends prompts and receives generated responses| model
+    system <-->|Stores and retrieves document files| file_store
+    system <-->|Stores users, conversations, documents, and audit records| record_store
+    system <-->|Creates representations and retrieves relevant content| vector_store
+    system <-->|Builds and queries connected knowledge| graph_store
+
+    classDef actor fill:#fff4cc,stroke:#9a6700,color:#24292f,stroke-width:2px
+    classDef system fill:#000000,stroke:#000000,color:#ffffff,stroke-width:3px
+    classDef dependency fill:#ffffff,stroke:#5b6470,color:#24292f,stroke-width:1px
+
+    class user actor
+    class system system
+    class identity,model,file_store,record_store,vector_store,graph_store dependency

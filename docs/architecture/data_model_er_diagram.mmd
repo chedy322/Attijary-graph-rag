@@ -1,0 +1,82 @@
+erDiagram
+    USER ||--o{ DOCUMENT : uploads
+    USER ||--o{ CHAT : owns
+    USER ||--o{ AUDIT_LOG : creates
+    CHAT ||--o{ CONVERSATION : contains
+    DOCUMENT ||--o{ DOCUMENT_CHUNK : is_indexed_as
+    GRAPH_ENTITY ||--o{ GRAPH_RELATIONSHIP : source
+    GRAPH_ENTITY ||--o{ GRAPH_RELATIONSHIP : target
+
+    USER {
+        uuid user_id PK
+        string firstname
+        string lastname
+        string email UK
+        string role
+        string clerk_id UK
+        datetime created_at
+        datetime updated_at
+    }
+
+    DOCUMENT {
+        uuid document_id PK
+        uuid uploaded_by_user_id FK
+        string title
+        string number
+        datetime date
+        string category
+        string file_path
+        string file_extension
+        string status
+        string origin
+        string source_url
+    }
+
+    CHAT {
+        uuid chat_id PK
+        uuid user_id FK
+        string title
+        datetime created_at
+    }
+
+    CONVERSATION {
+        uuid conversation_id PK
+        uuid chat_id FK
+        string role
+        text content
+        datetime created_at
+        jsonb rag_source
+    }
+
+    AUDIT_LOG {
+        uuid id PK
+        uuid actor_id FK
+        string action
+        uuid target_id
+        string target_resource
+        string ip_address
+        string details
+        datetime created_at
+    }
+
+    DOCUMENT_CHUNK {
+        string chunk_id PK
+        uuid document_id FK
+        int page_number
+        text content
+        vector embedding
+    }
+
+    GRAPH_ENTITY {
+        string entity_id PK
+        uuid document_id FK
+        string entity_type
+        string name
+    }
+
+    GRAPH_RELATIONSHIP {
+        string relationship_id PK
+        string source_entity_id FK
+        string target_entity_id FK
+        string relationship_type
+    }
