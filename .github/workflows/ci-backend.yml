@@ -33,7 +33,7 @@ jobs:
   docker-build-and-scan:
     uses: ./.github/workflows/docker-build-image.yml
     with:
-      image_name: 'graphRag-backend'
+      image_name: 'graphrag-backend'
       image_tag: 'latest'
       dockerfile_path: 'Dockerfile'
       context: 'backend'
