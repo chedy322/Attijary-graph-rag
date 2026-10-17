@@ -57,10 +57,10 @@ The project demonstrates production-oriented software engineering across applica
 
 
 <p align="center"><img width="1917" height="867" alt="Screenshot 2026-10-17 101720" src="https://github.com/user-attachments/assets/a4f15ef5-df60-400a-8330-de79b4b11e4d" /></p> 
-<p align="center"><em>Document upload, metadata capture, and indexing workflow.</em></p>
+<p align="center"><em>Grounded conversational query experience with retrieved sources.</em></p>
 
 <p align="center"><img width="1917" height="867" alt="Screenshot 2026-10-17 101808" src="https://github.com/user-attachments/assets/8022f1f7-b0e6-4566-96e6-caefc0165f15" /></p>
-<p align="center"><em>Grounded conversational query experience with retrieved sources.</em></p>
+<p align="center"><em>Document upload, metadata capture, and indexing workflow.</em></p>
 
 <p align="center"><<img width="1917" height="861" alt="Screenshot 2026-10-17 101911" src="https://github.com/user-attachments/assets/bbc4d1d3-827e-4ff0-9368-fb8604afee5f" /></p>
 <p align="center"><em>Structured administrative audit-log view.</em></p>
