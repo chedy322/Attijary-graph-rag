@@ -56,17 +56,17 @@ The project demonstrates production-oriented software engineering across applica
 
 > Replace the placeholder assets below with project screenshots when available.
 
-<p align="center"><img src="docs/assets/dashboard.png" width="800" alt="Dashboard View"></p>
-<p align="center"><em>Administrative dashboard and regulatory document overview.</em></p>
-
-<p align="center"><img src="docs/assets/document-ingestion.png" width="800" alt="Document Ingestion View"></p>
+<p align="center"><img src="![Uploading image.png…]()" width="800" alt="Document Ingestion View"></p>
 <p align="center"><em>Document upload, metadata capture, and indexing workflow.</em></p>
 
-<p align="center"><img src="docs/assets/chat-query.png" width="800" alt="GraphRAG Query View"></p>
+<p align="center"><img src="![Uploading image.png…]()" width="800" alt="GraphRAG Query View"></p>
 <p align="center"><em>Grounded conversational query experience with retrieved sources.</em></p>
 
-<p align="center"><img src="docs/assets/audit-logs.png" width="800" alt="Audit Log View"></p>
+<p align="center"><img src="![Uploading image.png…]()" width="800" alt="Audit Log View"></p>
 <p align="center"><em>Structured administrative audit-log view.</em></p>
+
+<p align="center"><img src="![Uploading image.png…]()" width="800" alt="Dashboard View"></p>
+<p align="center"><em>Document graph relationship.</em></p>
 
 ## Core Capabilities
 
