@@ -649,7 +649,3 @@ This repository is intentionally structured to demonstrate end-to-end ownership:
 - Explicit lifecycle states for document processing and task execution.
 - Cloud-native delivery with immutable containers, infrastructure as code, OIDC authentication, and security scanning.
 - Architecture artifacts that make system boundaries, data flows, deployment topology, and operational behavior reviewable by engineering teams.
-
-## License
-
-No license has been declared for this repository. Contact the repository owner before reusing the implementation or its assets.
