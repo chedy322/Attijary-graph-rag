@@ -1,6 +1,6 @@
 # resource_group_name = "graphragstudentrg"
 resource_location                    = "centralindia"
-storage_resource_name                = "staging-grapghragestudentstorage"
+storage_resource_name                = "staginggraphragstore"
 staging_resource_group_name          = "my-staging-rg"
 bootstrap_resource_group_name        = "my-bootstrap-rg"
 terraform_state_storage_account_name = "attijarymystatestorage7"

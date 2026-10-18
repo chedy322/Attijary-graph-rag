@@ -232,7 +232,41 @@ jobs:
         with:
           name: staging-k6-results-${{ github.sha }}
           path: staging-k6-summary.json
-  
+  # destroy staging resoruce
+  destroy-staging:
+    name: Destroy staging infrastructure
+    runs-on: ubuntu-latest
+    if: always() && github.ref == 'refs/heads/main'
+    needs: load-test
+    environment: staging
+    env:
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_USE_OIDC: "true"
+    defaults:
+      run:
+        working-directory: infrastructure/terraform/environments/staging
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Terraform destroy
+        env:
+          TF_VAR_STAGING_SSH_PUBLIC_KEY: ${{ secrets.STAGING_SSH_PUBLIC_KEY }}
+        run: terraform destroy -auto-approve
   promote-docker-image:
     name: Promote Docker image to immutable production SHA
     runs-on: ubuntu-latest
