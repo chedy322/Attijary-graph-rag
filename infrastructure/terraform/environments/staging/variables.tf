@@ -32,10 +32,7 @@ variable "terraform_state_storage_account_name" {
   description = "The name of the storage account for Terraform state."
   type        = string
 }
-variable "terraform_state_prod_container_name" {
-  description = "The name of the container for Terraform state in production."
-  type        = string
-}
+
 
 
 variable "management_identity_name" {
