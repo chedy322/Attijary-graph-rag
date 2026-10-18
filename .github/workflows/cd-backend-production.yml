@@ -13,7 +13,6 @@ concurrency:
 env:
   IMAGE_NAME: production-graphrag-backend
   IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
-
 jobs:
   deploy-backend-to-production-environment:
     runs-on: ubuntu-latest
