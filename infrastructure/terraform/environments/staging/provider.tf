@@ -7,11 +7,11 @@ terraform {
 
   }
   backend "azurerm" {
-    resource_group_name   = "my-bootstrap-rg"
-    storage_account_name  = "attijarymystatestorage7"
-    container_name        = "mytfstatecontainerstaging"
-    key                   = "staging.tfstate"
-    use_azuread_auth       = true
+    resource_group_name  = "my-bootstrap-rg"
+    storage_account_name = "attijarymystatestorage7"
+    container_name       = "mytfstatecontainerstaging"
+    key                  = "staging.tfstate"
+    use_azuread_auth     = true
   }
 }
 
