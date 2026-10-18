@@ -3,7 +3,7 @@ name: Services for Graph RAG
 services:   
   backend:
     image: ${IMAGE_NAME}
-    container_name: staging-graphRag-backend
+    container_name: staging-graphrag-backend
     restart: unless-stopped
     ports:
       - "5000:5000"
@@ -25,7 +25,7 @@ services:
   celery_worker:
     image: ${IMAGE_NAME}
     restart: unless-stopped
-    container_name: staging-graphRag-celery
+    container_name: staging-graphrag-celery
     # Overrides the default CMD in Dockerfile
     command: ["opentelemetry-instrument",
               "--logs_exporter", 
