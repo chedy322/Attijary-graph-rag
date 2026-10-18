@@ -23,14 +23,15 @@ env:
 permissions:
   contents: read
   id-token: write
+  security-events: write
 
 jobs:
   build-backend:
     name: Build and scan backend image
     uses: ./.github/workflows/docker-build-image.yml
     with:
-      context: 'backend/Dockerfile'
-      dockerfile_path: 'Dockerfile'
+      context: 'backend'
+      dockerfile_path: 'backend/Dockerfile'
       image_name: staging-graphrag-backend
       image_tag: ${{ github.sha }}
       push_image: true
