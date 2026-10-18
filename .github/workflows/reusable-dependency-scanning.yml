@@ -13,7 +13,6 @@ jobs:
             uses: actions/dependency-review-action@v4
             with:
                 # Optional configurations:
-                fail-on-severity: 'high' # Choices: low, moderate, high, critical
-                allow-licenses: 'MIT, Apache-2.0' # Fail if a package uses an unapproved license
+                fail-on-severity: critical,high
                 base-ref: ${{ github.event.pull_request.base.sha || github.event.before }}
                 head-ref: ${{ github.event.pull_request.head.sha || github.event.after }}

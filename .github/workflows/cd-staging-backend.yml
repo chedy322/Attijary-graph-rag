@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  IMAGE_NAME: staging-graphRag-backend
+  IMAGE_NAME: staging-graphrag-backend
   IMAGE_TAG: ${{ github.sha }}
 
 permissions:
@@ -31,7 +31,7 @@ jobs:
     with:
       context: 'backend/Dockerfile'
       dockerfile_path: 'Dockerfile'
-      image_name: staging-graphRag-backend
+      image_name: staging-graphrag-backend
       image_tag: ${{ github.sha }}
       push_image: true
     secrets:
@@ -163,7 +163,7 @@ jobs:
       - name: Deploy immutable image over SSH
         uses: appleboy/ssh-action@v1.2.2
         env:
-          IMAGE: docker.io/${{ secrets.DOCKER_USERNAME }}/staging-graphRag-backend:${{ github.sha }}
+          IMAGE: docker.io/${{ secrets.DOCKER_USERNAME }}/staging-graphrag-backend:${{ github.sha }}
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         with:
@@ -252,6 +252,6 @@ jobs:
 
       - name: Promote image to immutable production tag
         run: |
-          docker pull docker.io/${{ secrets.DOCKER_USERNAME }}/staging-graphRag-backend:${{ github.sha }}
-          docker tag docker.io/${{ secrets.DOCKER_USERNAME }}/staging-graphRag-backend:${{ github.sha }} docker.io/${{ secrets.DOCKER_USERNAME }}/production-graphRag-backend:${{ github.sha }}
-          docker push docker.io/${{ secrets.DOCKER_USERNAME }}/production-graphRag-backend:${{ github.sha }}
+          docker pull docker.io/${{ secrets.DOCKER_USERNAME }}/staging-graphrag-backend:${{ github.sha }}
+          docker tag docker.io/${{ secrets.DOCKER_USERNAME }}/staging-graphrag-backend:${{ github.sha }} docker.io/${{ secrets.DOCKER_USERNAME }}/production-graphrag-backend:${{ github.sha }}
+          docker push docker.io/${{ secrets.DOCKER_USERNAME }}/production-graphrag-backend:${{ github.sha }}
