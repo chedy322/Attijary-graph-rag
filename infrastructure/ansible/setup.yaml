@@ -105,6 +105,14 @@
         name: nginx
         state: started
         enabled: true
+    - name: Create staging deployment directory with proper ownership
+      ansible.builtin.file:
+        path: /opt/graphrag/staging
+        state: directory
+        owner: azureadminstudent
+        group: azureadminstudent
+        mode: '0755'
+      become: true
 
   # -------------------------------------------------------------
   # Handlers
