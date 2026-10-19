@@ -53,6 +53,11 @@
           - docker-compose-plugin
         state: present
         update_cache: true
+    - name: Add current user to docker group
+      user:
+        name: azureadminstudent
+        groups: docker
+        append: yes
 
     - name: Ensure Docker service is enabled and started
       systemd:

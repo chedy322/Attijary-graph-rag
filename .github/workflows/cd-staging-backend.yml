@@ -175,7 +175,8 @@ jobs:
           script: |
             echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
             docker pull "$IMAGE"
-            IMAGE_NAME="$IMAGE" docker-compose -f /opt/graphrag/staging/vm-docker-compose.yml up -d --remove-orphans
+            docker logout
+            IMAGE_NAME="$IMAGE" docker compose -f /opt/graphrag/staging/vm-docker-compose.yml up -d --remove-orphans
             
 
   smoke-test:
