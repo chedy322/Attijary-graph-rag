@@ -4,6 +4,7 @@ import logging
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from sqlalchemy import text
 from core.logging_config import setup_audit_interceptor
 from config.database import db, migrate
 from config.celery_app import celery_client
@@ -66,6 +67,8 @@ def create_app() -> Flask:
     if USER and HOST and DBNAME:
         DATABASE_URL = f"postgresql+psycopg2://{USER}:{ENCODED_PASSWORD}@{HOST}:{DBPORT}/{DBNAME}?sslmode=require"
     else:
+        logger.warning("Database environment variables are not fully set. Falling back to default DATABASE_URL.")
+        print("Database environment variables are not fully set. Falling back to default DATABASE_URL.")
         # Fallback URI if individual DB env vars aren't populated
         DATABASE_URL = os.getenv(
             "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/regulatory_db"
@@ -128,7 +131,7 @@ def create_app() -> Flask:
     def readiness_check():
         try:
             # Check database connection
-            db.session.execute("SELECT 1")
+            db.session.execute(text("SELECT 1"))
             logger.info("Database connection is healthy.")
             # Check the Weviate connection 
             weaviate_client.get_client().is_ready()
@@ -136,9 +139,11 @@ def create_app() -> Flask:
             # Check the neo4j connection
             neo4j_client.get_driver().verify_connectivity()
             logger.info("Neo4j connection is healthy.")
+
             # Check the clerk connection
             # Check the redis connection
             # check the llm connection
+            return jsonify({"status": "ready"}), 200
         except Exception:
             logger.exception("Readiness check failed")
             return jsonify({"status": "unhealthy", "error": "Service temporarily unavailable"}), 503

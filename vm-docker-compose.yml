@@ -25,7 +25,7 @@ services:
   celery_worker:
     image: ${IMAGE_NAME}
     restart: unless-stopped
-    container_name: staging-graphrag-celery
+    container_name: staging-graphrag-celery    
     # Overrides the default CMD in Dockerfile
     command: ["opentelemetry-instrument",
               "--logs_exporter", 

@@ -51,15 +51,19 @@ jobs:
           IMAGE: docker.io/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+          AZURE_PRODUCTION_KEY_VAULT_URI: ${{ secrets.AZURE_PRODUCTION_KEY_VAULT_URI }}
+          FLASK_ENV: production
         with:
           host: ${{ secrets.PRODUCTION_VM_IP }}
           username: azureadminstudent
           key: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
-          envs: IMAGE,DOCKER_USERNAME,DOCKER_PASSWORD
+
+          envs: IMAGE,DOCKER_USERNAME,DOCKER_PASSWORD,AZURE_PRODUCTION_KEY_VAULT_URI,FLASK_ENV
           script: |
             echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
             docker pull "$IMAGE"
-            IMAGE_NAME="$IMAGE" docker compose -f /opt/graphrag/production/vm-docker-compose.yml up -d --remove-orphans
+            docker logout
+            FLASK_ENV="$FLASK_ENV" AZURE_PRODUCTION_KEY_VAULT_URI="$AZURE_PRODUCTION_KEY_VAULT_URI" IMAGE_NAME="$IMAGE" docker compose -f /opt/graphrag/production/vm-docker-compose.yml up -d --remove-orphans
             
             # Health check loop
             for attempt in {1..30}; do

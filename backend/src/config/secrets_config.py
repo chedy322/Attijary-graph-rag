@@ -17,9 +17,6 @@ class SecretsAppConfig:
             raise ValueError("FLASK_ENV is not a valid value.")
         if flask_env == "production" or flask_env == "staging":
             logger.info(f"Loading secrets from Azure Key Vault: {url_key_vault}")
-            secret_value = os.getenv(url_key_vault)
-            if secret_value is None:
-                raise ValueError(f"Secret '{url_key_vault}' not found in environment variables.")
             try:
                 client = SecretClient(vault_url=url_key_vault, credential=DefaultAzureCredential())
                 
