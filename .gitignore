@@ -52,3 +52,4 @@ secrets.auto.tfvars
 tfplan*
 ARCHITECTURE.md
 TODO
+local-staging.env

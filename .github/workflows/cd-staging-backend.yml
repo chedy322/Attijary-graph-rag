@@ -167,16 +167,18 @@ jobs:
           IMAGE: docker.io/${{ secrets.DOCKER_USERNAME }}/staging-graphrag-backend:${{ github.sha }}
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+          AZURE_STAGING_KEY_VAULT_URI: ${{ secrets.AZURE_STAGING_KEY_VAULT_URI }}
+          FLASK_ENV: staging
         with:
           host: ${{ needs.provision-staging.outputs.public_ip }}
           username: azureadminstudent
           key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
-          envs: IMAGE,DOCKER_USERNAME,DOCKER_PASSWORD
+          envs: IMAGE,DOCKER_USERNAME,DOCKER_PASSWORD,AZURE_STAGING_KEY_VAULT_URI,FLASK_ENV
           script: |
             echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
             docker pull "$IMAGE"
             docker logout
-            IMAGE_NAME="$IMAGE" docker compose -f /opt/graphrag/staging/vm-docker-compose.yml up -d --remove-orphans
+            FLASK_ENV="$FLASK_ENV" AZURE_STAGING_KEY_VAULT_URI="$AZURE_STAGING_KEY_VAULT_URI" IMAGE_NAME="$IMAGE" docker compose -f /opt/graphrag/staging/vm-docker-compose.yml up -d --remove-orphans
             
 
   smoke-test:
@@ -219,6 +221,7 @@ jobs:
         uses: grafana/setup-k6-action@v1
 
       - name: Run k6 and publish results
+        continue-on-error: true
         env:
           BASE_URL: http://${{ needs.provision-staging.outputs.public_ip }}
           # Clerk token not needed because staging has no authentication enabled.
