@@ -5,6 +5,7 @@ on:
         - main
       paths:
         - 'frontend/**'
+        - '.github/workflows/ci-frontend.yml'
 permissions:
   contents: read
   security-events: write
