@@ -169,6 +169,7 @@ jobs:
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
           AZURE_STAGING_KEY_VAULT_URI: ${{ secrets.AZURE_STAGING_KEY_VAULT_URI }}
           FLASK_ENV: staging
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
         with:
           host: ${{ needs.provision-staging.outputs.public_ip }}
           username: azureadminstudent
@@ -178,7 +179,7 @@ jobs:
             echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
             docker pull "$IMAGE"
             docker logout
-            FLASK_ENV="$FLASK_ENV" AZURE_STAGING_KEY_VAULT_URI="$AZURE_STAGING_KEY_VAULT_URI" IMAGE_NAME="$IMAGE" docker compose -f /opt/graphrag/staging/vm-docker-compose.yml up -d --remove-orphans
+            AZURE_CLIENT_ID="$AZURE_CLIENT_ID" FLASK_ENV="$FLASK_ENV" AZURE_STAGING_KEY_VAULT_URI="$AZURE_STAGING_KEY_VAULT_URI" IMAGE_NAME="$IMAGE" docker compose -f /opt/graphrag/staging/vm-docker-compose.yml up -d --remove-orphans
             
 
   smoke-test:
