@@ -77,13 +77,13 @@ jobs:
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
-          output: 'trivy-results.sarif'
+          output: 'frontend-trivy-results.sarif'
       # Upload the Trivy SARIF report for GitHub Code Scanning
       - name: Upload Trivy SARIF report
         if: always()
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: ${{ github.workspace }}/trivy-results.sarif
+          sarif_file: frontend-trivy-results.sarif
 
       - name: Push image to registry
         if: ${{ inputs.push_image }}
