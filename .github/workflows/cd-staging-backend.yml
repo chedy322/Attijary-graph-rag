@@ -169,7 +169,7 @@ jobs:
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
           AZURE_STAGING_KEY_VAULT_URI: ${{ secrets.AZURE_STAGING_KEY_VAULT_URI }}
           FLASK_ENV: staging
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.VM_MANAGED_IDENTITY_CLIENT_ID }}
         with:
           host: ${{ needs.provision-staging.outputs.public_ip }}
           username: azureadminstudent
