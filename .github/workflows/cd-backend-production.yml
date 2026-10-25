@@ -10,6 +10,10 @@ concurrency:
   group: production-backend
   cancel-in-progress: false
 
+permissions:
+  contents: read
+  id-token: write
+
 env:
   IMAGE_NAME: production-graphrag-backend
   IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
@@ -58,8 +62,7 @@ jobs:
           host: ${{ secrets.PRODUCTION_VM_IP }}
           username: azureadminstudent
           key: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
-
-          envs: IMAGE,DOCKER_USERNAME,DOCKER_PASSWORD,AZURE_PRODUCTION_KEY_VAULT_URI,FLASK_ENV
+          envs: IMAGE,DOCKER_USERNAME,DOCKER_PASSWORD,AZURE_PRODUCTION_KEY_VAULT_URI,FLASK_ENV,AZURE_CLIENT_ID
           script: |
             echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
             docker pull "$IMAGE"
