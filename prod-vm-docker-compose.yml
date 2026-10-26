@@ -3,7 +3,7 @@ name: Services for Graph RAG
 services:   
   backend:
     image: ${IMAGE_NAME}
-    container_name: staging-graphrag-backend
+    container_name: production-graphrag-backend
     restart: unless-stopped
     ports:
       - "5000:5000"
@@ -16,7 +16,7 @@ services:
       retries: 5
     environment:
       - FLASK_ENV=${FLASK_ENV}
-      - AZURE_PRODUCTION_KEY_VAULT_URI=${AZURE_PRODUCTION_KEY_VAULT_URI}
+      - AZURE_PROD_KEY_VAULT_URI=${AZURE_PRODUCTION_KEY_VAULT_URI}
       - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
     deploy:
       resources:
@@ -29,7 +29,7 @@ services:
   celery_worker:
     image: ${IMAGE_NAME}
     restart: unless-stopped
-    container_name: staging-graphrag-celery    
+    container_name: production-graphrag-celery    
     # Overrides the default CMD in Dockerfile
     command: ["opentelemetry-instrument",
               "--logs_exporter", 
@@ -42,7 +42,7 @@ services:
         condition: service_started
     environment:
       - FLASK_ENV=${FLASK_ENV}
-      - AZURE_PRODUCTION_KEY_VAULT_URI=${AZURE_PRODUCTION_KEY_VAULT_URI}
+      - AZURE_PROD_KEY_VAULT_URI=${AZURE_PRODUCTION_KEY_VAULT_URI}
       - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
     deploy:
       resources:
