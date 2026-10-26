@@ -46,7 +46,7 @@ jobs:
           host: ${{ secrets.PRODUCTION_VM_IP }}
           username: azureadminstudent
           key: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
-          source: vm-docker-compose.yml
+          source: prod-vm-docker-compose.yml
           target: /opt/graphrag/production/
 
       - name: Deploy backend to production VM
@@ -67,7 +67,7 @@ jobs:
             echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
             docker pull "$IMAGE"
             docker logout
-            AZURE_CLIENT_ID="$AZURE_CLIENT_ID" FLASK_ENV="$FLASK_ENV" AZURE_PRODUCTION_KEY_VAULT_URI="$AZURE_PRODUCTION_KEY_VAULT_URI" IMAGE_NAME="$IMAGE" docker compose -f /opt/graphrag/production/vm-docker-compose.yml up -d --remove-orphans
+            AZURE_CLIENT_ID="$AZURE_CLIENT_ID" FLASK_ENV="$FLASK_ENV" AZURE_PRODUCTION_KEY_VAULT_URI="$AZURE_PRODUCTION_KEY_VAULT_URI" IMAGE_NAME="$IMAGE" docker compose -f /opt/graphrag/production/prod-vm-docker-compose.yml up -d --remove-orphans
             
             # Health check loop
             for attempt in {1..30}; do
