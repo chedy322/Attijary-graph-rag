@@ -1,4 +1,5 @@
 # Deploy only the backend to staging, then run smoke and load tests.
+
 name: CD - Staging Backend
 
 on:
