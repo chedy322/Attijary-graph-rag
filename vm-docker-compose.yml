@@ -31,9 +31,7 @@ services:
     restart: unless-stopped
     container_name: staging-graphrag-celery    
     # Overrides the default CMD in Dockerfile
-    command: ["opentelemetry-instrument",
-              "--logs_exporter", 
-              "otlp","celery", "-A",
+    command: ["celery", "-A",
                "celery_worker.celery_app", "worker", "--concurrency=2", "--loglevel=info"]
     networks:
       - backend_network

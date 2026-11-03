@@ -10,8 +10,8 @@ import uuid
 from models.document import DocumentStatus
 
 document_bp = Blueprint("documents", __name__)
-# Admin can get,edit,delete,index any document even if it s not his document, but the user can only get his own document.
-
+# Admin can get,edit,delete,index any document even if it s not his document, 
+# but a normal user can only get documents and not edit,delete or index them.
 
 # ── GET / ─────────────────────────────────────────────────────────────────────
 @document_bp.route("/", methods=["GET"])
@@ -139,12 +139,10 @@ def index_document(document_id):
 @require_auth
 def get_document(document_id):
     """Fetch a single document by UUID."""
-    if g.get(
-        "user_role"
-    ) != "ADMIN" and not document_service.get_document_by_id_and_clerk_user_id(
-        document_id, g.user_id
-    ):
-        raise AppError("Unauthorized access to this document", 403)
+    # if   not document_service.get_document_by_id_and_clerk_user_id(
+    #     document_id, g.user_id
+    # ):
+    #     raise AppError("Unauthorized access to this document", 403)
     document = document_service.get_document_by_id(document_id)
     if not document:
         raise AppError("Document not found", 404)

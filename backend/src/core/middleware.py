@@ -27,14 +27,14 @@ def authentication_middleware(f):
             response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
             response.headers["Access-Control-Allow-Credentials"] = "true"
             return response, 200
-        if not IS_PROD:
-            # In development, we can mock the user_id for testing purposes
-            g.user_id = "user_3HUeuQ21EH4OGF2FdwqhqX4qMrH"
-            g.user_claims = {
-                "role": "ADMIN",
-                "sub": "user_3HUeuQ21EH4OGF2FdwqhqX4qMrH",
-            }
-            return f(*args, **kwargs)
+        # if not IS_PROD:
+        #     # In development, we can mock the user_id for testing purposes
+        #     g.user_id = "user_3HUeuQ21EH4OGF2FdwqhqX4qMrH"
+        #     g.user_claims = {
+        #         "role": "ADMIN",
+        #         "sub": "user_3HUeuQ21EH4OGF2FdwqhqX4qMrH",
+        #     }
+        #     return f(*args, **kwargs)
         try:
             request_state = clerk_client.authenticate_request(
                 request,

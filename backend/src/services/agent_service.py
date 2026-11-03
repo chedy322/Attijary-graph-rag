@@ -2,7 +2,7 @@ import re
 import uuid
 import logging
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List,Tuple,Literal
+from typing import Optional, Dict, Any, List,Tuple,Literal, Iterator
 from models.document import DocumentStatus
 from config.database import db
 from config.llm import llm_singleton
@@ -159,12 +159,12 @@ class AgentService:
             ("system",
             "You are an intent classifier and query optimizer for a RAG system.\n"
             "Your tasks:\n"
-            "1. **method**: Classify the user intent into one of the available tools:\n"
+            "1. Method: Classify the user intent into one of the available tools:\n"
             "   - 'hybrid_search_tool': Specific factual, document-based, legal, domain, or entity questions.\n"
             "   - 'local_graph_search_tool': Specific entity relationships or graph links.\n"
             "   - 'global_graph_search_tool': Broad summaries or overall repository overviews.\n"
             "   - 'unrelated_or_conversational': Simple greetings (e.g. 'hi', 'thanks', 'how can you help me') or non-document questions.\n"
-            "2. **standalone_query**: Rephrase the user input using conversation history if history is available into a clear, standalone search query.\n"
+            "2. Standalone_query: Rephrase the user input using conversation history if history is available into a clear, standalone search query.\n"
             "   - CRITICAL: Do NOT answer the question, greet the user, or add commentary in 'standalone_query'. Just output the optimized search text."
             ),
             MessagesPlaceholder(variable_name="history"),
@@ -203,12 +203,12 @@ class AgentService:
         return agent_output
     
 
-    def process_query(
+    def stream_query(
         self,
         clerk_user_id: str,
         query: str,
         chat_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> Iterator[Dict[str, Any]]:
         """
         Execute RAG flow for a user query:
         1. Resolve user & chat session
@@ -297,14 +297,19 @@ class AgentService:
                 ])
                     synthesis_chain = synthesis_prompt | self.quick_model
                     try:
-                        synthesis_response = synthesis_chain.invoke({
-                            "context": hybrid_result.get("context", ""),
-                            "chat_history": langchain_history,
-                            "user_input": refactored_query
-                        })
-                        # LLM output
-                        agent_output_data = getattr(synthesis_response, "content", "I'm sorry, I couldn't process an answer.")
-                        agent_output = self._extract_string_from_output(agent_output_data)
+                        chunks = []
+                        for chunk in synthesis_chain.stream({
+                                "context": hybrid_result.get("context", ""),
+                                "chat_history": langchain_history,
+                                "user_input": refactored_query
+                        }):
+                                text = self._extract_string_from_output(
+                                    getattr(chunk, "content", chunk)
+                                )
+                                if text:
+                                    chunks.append(text)
+                                    yield {"type": "chunk", "data": text}
+                        agent_output = "".join(chunks)
                     except Exception as e:
                         logger.error(f"Error in synthesis chain: {str(e)}")
                         agent_output = "I'm sorry, I encountered an error generating a response. Please try again."
@@ -312,7 +317,7 @@ class AgentService:
                     logger.info("Routing to unrelated_or_conversational based on query and history.")
                     conv_prompt = ChatPromptTemplate.from_messages([
                         ("system", "You are a helpful, professional,document QA assistant.."
-                         "For greetings or questions about your capabilities, answer politely and explain that you assist with analyzing the uploaded repository documents."
+                         "For greetings or questions about your capabilities, answer politely and explain that you assist with analyzing the uploaded documents related to Central Bank."
                         "For general domain or technical questions not present in the documents (e.g., weather, third-party pricing, general tech facts), politely inform the user that you can only answer questions based on the provided documents."
                         "Do not answer questions that require specific document context or legal advice or private or internal data. "
                         "If the question is unrelated to the provided context, respond politely and inform the user that you cannot provide an answer.",
@@ -322,13 +327,18 @@ class AgentService:
                     ])
                     try:
                         conv_chain = conv_prompt | self.quick_model
-                        response = conv_chain.invoke({
-                            "chat_history": langchain_history,
-                            "user_input": refactored_query
-                        })
-                        agent_output_data = getattr(response, "content", "I'm sorry, I couldn't process an answer.")
-
-                        agent_output = self._extract_string_from_output(agent_output_data)
+                        chunks = []
+                        for chunk in conv_chain.stream({
+                                "chat_history": langchain_history,
+                                "user_input": refactored_query
+                        }):
+                                text = self._extract_string_from_output(
+                                    getattr(chunk, "content", chunk)
+                                )
+                                if text:
+                                    chunks.append(text)
+                                    yield {"type": "chunk", "data": text}
+                        agent_output = "".join(chunks)
                         confidence_score = 1.0
 
                     except Exception as e:
@@ -339,7 +349,24 @@ class AgentService:
                             logger.info(f"Routing to agent_executor based on query and history. Routed method: {routed_method}")
                     # Call the ai agent_executor to process the query with tools and context
                             try:
-                                agent_response = self.agent_executor.invoke({"input": refactored_query, "chat_history": langchain_history})
+                                output_parts = []
+                                latest_output = ""
+                                agent_response = {}
+                                for event in self.agent_executor.stream({
+                                    "input": refactored_query,
+                                    "chat_history": langchain_history,
+                                }):
+                                    if isinstance(event, dict) and event.get("output"):
+                                        text = self._extract_string_from_output(event["output"])
+                                        if text:
+                                            delta = text[len(latest_output):]
+                                            if delta:
+                                                yield {"type": "chunk", "data": delta}
+                                            latest_output = text
+                                            output_parts.append(text)
+                                    if isinstance(event, dict) and event.get("intermediate_steps"):
+                                        agent_response["intermediate_steps"] = event["intermediate_steps"]
+                                agent_response["output"] = latest_output
                                 # print(f"Agent response: {agent_response}")
                                 raw_output = agent_response.get("output", "I'm sorry, I couldn't process an answer. ")
                                 # print(f"Agent output: {raw_output}")
@@ -398,7 +425,8 @@ class AgentService:
         else:
             # Fallback heuristic: Higher if tools retrieved context, lower if direct generation
             confidence_score= confidence_score is None and 0.85 if intermediate_steps else 0.60
-        answer_text = re.sub(r"CONFIDENCE_SCORE:\s*[0-9\.]+", "", agent_output).strip() if routed_method =="local_graph_search" or routed_method == "global_graph_search" else agent_output.strip()
+        # answer_text = re.sub(r"CONFIDENCE_SCORE:\s*[0-9\.]+", "", agent_output).strip() if routed_method =="local_graph_search" or routed_method == "global_graph_search" else agent_output.strip()
+        answer_text = re.sub(r"CONFIDENCE_SCORE:\s*[0-9\.]+", "", agent_output).strip() if confidence_match else agent_output.strip()
 
         try:
             # Persist Assistant Response
@@ -425,14 +453,17 @@ class AgentService:
             )
             db.session.commit()
 
-            return {
-                "chat_id": str(chat.chat_id),
-                "conversation_id": str(assistant_conv.conversation_id),
-                "role": "ASSISTANT",
-                "content": answer_text,
-                "created_at": created_at_iso,
-                "rag_source": rag_source,
-            }   
+            yield {
+                "type": "complete",
+                "data": {
+                    "chat_id": str(chat.chat_id),
+                    "conversation_id": str(assistant_conv.conversation_id),
+                    "role": "ASSISTANT",
+                    "content": answer_text,
+                    "created_at": created_at_iso,
+                    "rag_source": rag_source,
+                },
+            }
         except Exception as e:
             db.session.rollback()
             logger.error(f"Failed to persist assistant response: {str(e)}")

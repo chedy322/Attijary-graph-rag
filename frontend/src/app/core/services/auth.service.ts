@@ -131,8 +131,16 @@ export class AuthService {
   }
   // Add register method mirroring login
 register(email: string, password: string, firstName: string, lastName: string): Observable<UserProfile> {
+  // return from(this.ensureClerkSignUp(email, password, firstName, lastName)).pipe(
+  //   switchMap(({ user }) => this.syncUserWithBackend(this.toSyncRequest(user))),
   return from(this.ensureClerkSignUp(email, password, firstName, lastName)).pipe(
-    switchMap(({ user }) => this.syncUserWithBackend(this.toSyncRequest(user))),
+    switchMap(({ user }) => {
+      // If clerk.setActive already triggered applyClerkState, return existing user signal if synced
+      if (this.isBackendSynced() && this.currentUser()) {
+        return [this.currentUser()!];
+      }
+      return this.syncUserWithBackend(this.toSyncRequest(user));
+    })
   );
 }
 

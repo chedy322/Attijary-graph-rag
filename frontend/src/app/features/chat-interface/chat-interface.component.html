@@ -83,7 +83,7 @@
     </div>
 
     <!-- Messages Container -->
-    <div class="messages-viewport">
+    <div #messagesViewport class="messages-viewport">
       @for (msg of messages; track msg.conversation_id) {
         @if (msg.role === 'USER') {
           <!-- User Question Bubble -->
@@ -110,14 +110,15 @@
                 <div class="confidence-header">
                   <span class="confidence-pill">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                    Confidence Score: {{ msg.rag_source?.confidence_score }}%
+                    Confidence Score: {{ (msg.rag_source?.confidence_score || 0) * 100 | number:'1.0-0' }}%
                   </span>
                 </div>
               }
 
               <!-- Text Content -->
               <div class="ai-content">
-                <p class="formatted-text">{{ msg.content }}</p>
+                <!-- <p class="formatted-text">{{ msg.content }}</p> -->
+                <markdown [data]="msg.content" (ready)="onMarkdownReady()"></markdown>
               </div>
 
               <!-- Graph Context (Regulatory Lineage) Section -->

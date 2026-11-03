@@ -54,13 +54,14 @@ matplotlib
 python-json-logger
 tiktoken 
 
+opentelemetry-exporter-otlp-proto-http
+opentelemetry-sdk
 opentelemetry-distro
-opentelemetry-exporter-otlp
 opentelemetry-instrumentation-flask
 opentelemetry-instrumentation-sqlalchemy
 opentelemetry-instrumentation-requests
 opentelemetry-instrumentation-logging
-
+langsmith
 
 gunicorn
 

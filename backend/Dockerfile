@@ -28,6 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libmagic1 \
     libgl1 \
     libglib2.0-0 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
@@ -48,4 +49,5 @@ EXPOSE 5000
 
 # CMD ["opentelemetry-instrument","flask", "run", "--host=0.0.0.0", "--port=5000"]
 
-CMD ["opentelemetry-instrument", "gunicorn", "--workers", "1","--threads", "3", "-b", "0.0.0.0:5000", "--timeout", "120", "src.app:create_app()"]
+# CMD ["opentelemetry-instrument", "gunicorn", "--workers", "1","--threads", "3", "-b", "0.0.0.0:5000", "--timeout", "120", "src.app:create_app()"]
+CMD [ "gunicorn", "--workers", "1","--threads", "3", "-b", "0.0.0.0:5000", "--timeout", "120", "src.app:create_app()"]
