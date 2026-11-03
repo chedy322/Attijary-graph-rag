@@ -1,4 +1,5 @@
 import json
+import logging
 
 from flask import Blueprint, request, jsonify, g, Response, stream_with_context
 from core.middleware import require_auth, admin_required
@@ -6,6 +7,7 @@ from core.exceptions import AppError
 from services.agent_service import agent_service
 
 agent_bp = Blueprint("agent", __name__)
+logger = logging.getLogger(__name__)
 
 
 @agent_bp.route("/query", methods=["POST"])
@@ -33,8 +35,9 @@ def query_agent():
             ):
                 yield json.dumps(event, separators=(",", ":")) + "\n"
         except Exception as error:
+            logger.exception("Error while streaming agent query response: %s", error)
             yield json.dumps(
-                {"type": "error", "data": str(error)},
+                {"type": "error", "data": "An internal error has occurred."},
                 separators=(",", ":"),
             ) + "\n"
 
