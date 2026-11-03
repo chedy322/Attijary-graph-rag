@@ -15,7 +15,9 @@ concurrency:
 env:
   DOCKER_IMAGE_NAME: attijary-front-app
   IMAGE_TAG: ${{ github.sha }}
-
+permissions:
+  contents: read
+  security-events: write
 jobs:
   build-frontend:
     uses: ./.github/workflows/docker-build-image.yml
