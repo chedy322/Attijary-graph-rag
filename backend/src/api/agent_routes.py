@@ -1,9 +1,13 @@
-from flask import Blueprint, request, jsonify, g
+import json
+import logging
+
+from flask import Blueprint, request, jsonify, g, Response, stream_with_context
 from core.middleware import require_auth, admin_required
 from core.exceptions import AppError
 from services.agent_service import agent_service
 
 agent_bp = Blueprint("agent", __name__)
+logger = logging.getLogger(__name__)
 
 
 @agent_bp.route("/query", methods=["POST"])
@@ -20,13 +24,33 @@ def query_agent():
     if not query or not str(query).strip():
         raise Exception("Query is required in request body.", 400)
 
-    result = agent_service.process_query(
-        clerk_user_id=g.user_id,
-        query=str(query).strip(),
-        chat_id=chat_id,
-    )
+    @stream_with_context
+    def generate():
+        yield json.dumps({"type": "ready", "data": None}) + "\n"
+        try:
+            for event in agent_service.stream_query(
+                clerk_user_id=g.user_id,
+                query=str(query).strip(),
+                chat_id=chat_id,
+            ):
+                yield json.dumps(event, separators=(",", ":")) + "\n"
+        except Exception as error:
+            logger.exception("Error while streaming agent query response: %s", error)
+            yield json.dumps(
+                {"type": "error", "data": "An internal error has occurred."},
+                separators=(",", ":"),
+            ) + "\n"
 
-    return jsonify(result), 200
+    return Response(
+        generate(),
+        status=200,
+        mimetype="application/x-ndjson",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
 
 
 @agent_bp.route("/chats", methods=["GET"])

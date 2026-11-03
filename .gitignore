@@ -53,3 +53,5 @@ tfplan*
 ARCHITECTURE.md
 TODO
 local-staging.env
+*.env
+backend.env

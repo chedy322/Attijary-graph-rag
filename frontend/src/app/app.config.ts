@@ -12,7 +12,7 @@ import {
 } from '@angular/common/http';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { AuthService } from './core/services/auth.service';
-
+import { provideMarkdown } from 'ngx-markdown'
 import { routes } from './app.routes';
 
 export const appConfig: ApplicationConfig = {
@@ -21,5 +21,6 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
     provideAppInitializer(() => inject(AuthService).initialize()),
+    provideMarkdown(),
   ],
 };

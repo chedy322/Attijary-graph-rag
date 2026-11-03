@@ -48,7 +48,7 @@ services:
     ports:
       - "3000:5000"
     env_file:
-      - ./backend/.env
+      - backend.env
     networks:
       - backend_network
       - frontend_network
@@ -72,14 +72,16 @@ services:
     restart: unless-stopped
     container_name: celery_worker_app
     # Overrides the default CMD in your Dockerfile
-    command: ["opentelemetry-instrument",
-              "--logs_exporter", 
-              "otlp","celery", "-A",
+    # command: ["opentelemetry-instrument",
+    #           "--logs_exporter", 
+    #           "otlp","celery", "-A",
+    #            "celery_worker.celery_app", "worker", "--concurrency=2", "--loglevel=info"]
+    command: ["celery", "-A",
                "celery_worker.celery_app", "worker", "--concurrency=2", "--loglevel=info"]
     networks:
       - backend_network
     env_file:
-      - ./backend/.env
+      - backend.env
     volumes:
       - ${USERPROFILE}/.azure:/root/.azure:ro
     depends_on:

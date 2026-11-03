@@ -56,6 +56,11 @@ export interface AgentQueryResponse {
   rag_source: RagSource;
 }
 
+export interface AgentStreamEvent {
+  type: 'ready' | 'chunk' | 'complete' | 'error';
+  data: string | AgentQueryResponse | null;
+}
+
 export interface ChatListResponse {
   chats: Chat[];
 }

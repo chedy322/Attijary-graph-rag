@@ -15,7 +15,7 @@ class SecretsAppConfig:
             raise ValueError("FLASK_ENV is not set in environment variables.")
         if flask_env not in ["development", "staging", "production"]:
             raise ValueError("FLASK_ENV is not a valid value.")
-        if flask_env == "production" or flask_env == "staging":
+        if flask_env in ["staging", "production"]:
             logger.info(f"Loading secrets from Azure Key Vault: {url_key_vault}")
             try:
                 client = SecretClient(vault_url=url_key_vault, credential=DefaultAzureCredential())
@@ -23,11 +23,16 @@ class SecretsAppConfig:
                 # Pull ALL secrets into os.environ at startup
                 for secret_property in client.list_properties_of_secrets():
                     if secret_property.enabled:
-                        url_key_vault = secret_property.name
-                        secret_value = client.get_secret(url_key_vault).value
-                        env_key = url_key_vault.replace("-", "_")
+                        secret_name = secret_property.name
+                        secret_value = client.get_secret(secret_name).value
+                        env_key = secret_name.replace("-", "_")
                         
                         # Populates os.getenv(...) dynamically across the entire Flask app
-                        os.environ.setdefault(env_key, secret_value)
+                        # os.environ.setdefault(env_key, secret_value)
+                        os.environ[env_key] = secret_value
+
             except Exception as e:
                 logger.warning(f"Key Vault bulk load warning: {e}")
+                raise e
+        else:
+            logger.info("Loading secrets from local environment variables for development environment.")
