@@ -6,8 +6,8 @@ on:
       - main
     paths:
       - 'frontend/**'
-      - '.github/workflows/cd-frontend.yml'
-      - '.github/workflows/docker-build-image.yml'
+      - './.github/workflows/cd-frontend.yml'
+      - './.github/workflows/docker-build-image.yml'
 
 concurrency:
   group: cd-frontend-production
@@ -15,7 +15,9 @@ concurrency:
 env:
   DOCKER_IMAGE_NAME: attijary-front-app
   IMAGE_TAG: ${{ github.sha }}
-
+permissions:
+  contents: read
+  security-events: write
 jobs:
   build-frontend:
     uses: ./.github/workflows/docker-build-image.yml
