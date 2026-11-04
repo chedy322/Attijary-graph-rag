@@ -62,14 +62,11 @@ The project demonstrates production-oriented software engineering across applica
 <p align="center"><img width="1917" height="867" alt="Screenshot 2026-10-17 101808" src="https://github.com/user-attachments/assets/8022f1f7-b0e6-4566-96e6-caefc0165f15" /></p>
 <p align="center"><em>Document upload, metadata capture, and indexing workflow.</em></p>
 
-<p align="center"><<img width="1917" height="861" alt="Screenshot 2026-10-17 101911" src="https://github.com/user-attachments/assets/bbc4d1d3-827e-4ff0-9368-fb8604afee5f" /></p>
+<p align="center"><img width="1917" height="861" alt="Screenshot 2026-10-17 101911" src="https://github.com/user-attachments/assets/bbc4d1d3-827e-4ff0-9368-fb8604afee5f" /></p>
 <p align="center"><em>Structured administrative audit-log view.</em></p>
 
 <p align="center"><img width="1917" height="882" alt="Screenshot 2026-10-17 102008" src="https://github.com/user-attachments/assets/639f55f0-338d-403a-9ba7-ce8a7ab9f9d0" /></p>
 <p align="center"><em>Document graph relationship.</em></p>
-
-<p align="center"><img width="720" height="1600" alt="WhatsApp Image 2026-11-04 at 7 40 32 PM" src="https://github.com/user-attachments/assets/8be53f8d-a047-460a-991b-1cffb0ca5fc3" /></p>
-<p align="center"><em>Telegram n8n notification on system error.</em></p>
 
 <p align="center"><img width="1916" height="868" alt="image" src="https://github.com/user-attachments/assets/b09b74d8-ddf6-4023-8d25-5ae8aacacd9f" /></p>
 <p align="center"><em>Grafana observability dashboard.</em></p>
