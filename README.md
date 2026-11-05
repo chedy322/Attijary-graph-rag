@@ -39,6 +39,8 @@ The project demonstrates production-oriented software engineering across applica
 - **Azure Blob Storage and Key Vault** for durable document storage and secret management.
 - **Terraform and GitHub Actions** for repeatable infrastructure delivery and security automation.
 
+Production url: https://attijary-front-app-prod.onrender.com
+
 ## Table of Contents
 
 - [Application Showcase](#-application-showcase)
@@ -56,7 +58,7 @@ The project demonstrates production-oriented software engineering across applica
 
 
 
-<p align="center"><img width="1917" height="867" alt="Screenshot 2026-10-17 101720" src="https://github.com/user-attachments/assets/a4f15ef5-df60-400a-8330-de79b4b11e4d" /></p> 
+<p align="center"><img width="1917" height="870" alt="Screenshot 2026-11-05 174245" src="https://github.com/user-attachments/assets/57e09cf3-390c-4eb5-9b00-6153c85ba86e" /></p> 
 <p align="center"><em>Grounded conversational query experience with retrieved sources.</em></p>
 
 <p align="center"><img width="1917" height="867" alt="Screenshot 2026-10-17 101808" src="https://github.com/user-attachments/assets/8022f1f7-b0e6-4566-96e6-caefc0165f15" /></p>
@@ -65,7 +67,7 @@ The project demonstrates production-oriented software engineering across applica
 <p align="center"><img width="1917" height="861" alt="Screenshot 2026-10-17 101911" src="https://github.com/user-attachments/assets/bbc4d1d3-827e-4ff0-9368-fb8604afee5f" /></p>
 <p align="center"><em>Structured administrative audit-log view.</em></p>
 
-<p align="center"><img width="1917" height="882" alt="Screenshot 2026-10-17 102008" src="https://github.com/user-attachments/assets/639f55f0-338d-403a-9ba7-ce8a7ab9f9d0" /></p>
+<p align="center"><img width="1913" height="862" alt="Screenshot 2026-11-05 181919" src="https://github.com/user-attachments/assets/d5136ffb-b44e-4d13-baba-659086aeae59" /></p>
 <p align="center"><em>Document graph relationship.</em></p>
 
 <p align="center"><img width="1916" height="868" alt="image" src="https://github.com/user-attachments/assets/b09b74d8-ddf6-4023-8d25-5ae8aacacd9f" /></p>
@@ -74,6 +76,8 @@ The project demonstrates production-oriented software engineering across applica
 <p align="center"><img width="1912" height="865" alt="image" src="https://github.com/user-attachments/assets/276ebaf8-21bf-4cc2-8114-dc6f3b0250a9" /></p>
 <p align="center"><em>Langsmith observability dashboard.</em></p>
 
+<p align="center"><img width="1456" height="646" alt="image" src="https://github.com/user-attachments/assets/e72a2e14-90da-4b67-848a-19004afcaaf1" /></p>
+<p align="center"><em>CI/CD pipeline.</em></p>
 
 
 ## Core Capabilities
